@@ -1,0 +1,369 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── CLINIC ────────────────────────────────────────────────
+model Clinic {
+  id          String   @id @default(uuid())
+  name        String
+  address     String?
+  city        String?
+  phone       String?
+  email       String?
+  doctorName  String
+  qualification String?  // B.H.M.S., M.D. etc
+  logoUrl     String?
+  signatureUrl String?
+  timings     String?  // "10am-2pm, 5pm-9pm"
+  planId      String   @default("starter")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       User[]
+  patients    Patient[]
+  visits      Visit[]
+  followUps   FollowUp[]
+  templates   NotificationTemplate[]
+
+  @@map("clinics")
+}
+
+// ─── USERS (Doctor + Receptionist) ─────────────────────────
+model User {
+  id           String   @id @default(uuid())
+  clinicId     String
+  clinic       Clinic   @relation(fields: [clinicId], references: [id])
+  role         Role     @default(RECEPTIONIST)
+  name         String
+  phone        String   @unique
+  email        String?  @unique
+  passwordHash String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  visits       Visit[]
+
+  @@map("users")
+}
+
+enum Role {
+  DOCTOR
+  RECEPTIONIST
+}
+
+// ─── PATIENTS ───────────────────────────────────────────────
+model Patient {
+  id                  String    @id @default(uuid())
+  clinicId            String
+  clinic              Clinic    @relation(fields: [clinicId], references: [id])
+
+  // Registration (matching Hompath Classic fields exactly)
+  regNo               Int       // auto-incremented per clinic
+  title               String?   // Mr. Mrs. Dr. etc
+  firstName           String
+  middleName          String?
+  lastName            String?
+  dob                 DateTime?
+  age                 Int?
+  gender              Gender?
+  maritalStatus       MaritalStatus?
+
+  // Address - Residential
+  resAddress          String?
+  resCity             String?
+  resState            String?
+  resPostalCode       String?
+  resCountry          String?   @default("India")
+
+  // Address - Office
+  offAddress          String?
+  offCity             String?
+  offState            String?
+  offPostalCode       String?
+  offCountry          String?
+
+  // Contact
+  phoneMobile         String?
+  phoneRes            String?
+  phoneOffice         String?
+  fax                 String?
+  email               String?
+
+  // Referral
+  referredByName      String?
+  referredByContact   String?
+
+  // System
+  languagePref        String    @default("en") // en | hi | mr
+  patientType         PatientType @default(HOMEOPATHY)
+  anniversary         DateTime?
+  isActive            Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  visits              Visit[]
+  followUps           FollowUp[]
+  familyHistory       FamilyHistory[]
+  documents           Document[]
+  consents            Consent[]
+
+  @@map("patients")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum MaritalStatus {
+  SINGLE
+  MARRIED
+  WIDOWED
+  DIVORCED
+}
+
+enum PatientType {
+  ALLOPATHY
+  HOMEOPATHY
+  BOTH
+}
+
+// ─── VISITS ─────────────────────────────────────────────────
+model Visit {
+  id            String      @id @default(uuid())
+  clinicId      String
+  clinic        Clinic      @relation(fields: [clinicId], references: [id])
+  patientId     String
+  patient       Patient     @relation(fields: [patientId], references: [id])
+  doctorId      String
+  doctor        User        @relation(fields: [doctorId], references: [id])
+  episodeId     String?     // groups related visits together
+
+  type          VisitType
+  diseaseType   String?     // used for follow-up rule selection
+  chiefComplaint String?
+  fee           Decimal     @default(0)
+  paymentStatus PaymentStatus @default(PENDING)
+  paymentMode   PaymentMode?
+  notes         String?
+  visitDate     DateTime    @default(now())
+  closedAt      DateTime?
+
+  // Sub-records
+  allopathyRx   AllopathyRx?
+  homeopathyCase HomeopathyCase?
+  vitals        Vitals?
+  payment       Payment?
+  followUps     FollowUp[]
+
+  @@map("visits")
+}
+
+enum VisitType {
+  ALLOPATHY
+  HOMEOPATHY
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  WAIVED
+}
+
+enum PaymentMode {
+  CASH
+  UPI
+  ONLINE
+  CARD
+}
+
+// ─── ALLOPATHY PRESCRIPTION ─────────────────────────────────
+model AllopathyRx {
+  id            String   @id @default(uuid())
+  visitId       String   @unique
+  visit         Visit    @relation(fields: [visitId], references: [id])
+  medicines     Json     // [{name, dosage, frequency, duration, instructions}]
+  advice        String?
+  nextVisitDate DateTime?
+  createdAt     DateTime @default(now())
+
+  @@map("allopathy_rx")
+}
+
+// ─── HOMEOPATHY CASE SHEET ───────────────────────────────────
+model HomeopathyCase {
+  id              String   @id @default(uuid())
+  visitId         String   @unique
+  visit           Visit    @relation(fields: [visitId], references: [id])
+
+  // Case details
+  chiefComplaint  String?
+  historyPresent  String?
+  historyPast     String?
+  historySurgical String?
+  historyFamily   String?
+
+  // Homeopathy generals
+  thermalSensation String?  // HOT | COLD | CHILLY
+  appetite        String?
+  thirst          String?
+  sleep           String?
+  dreams          String?
+  menstrual       String?   // for female patients
+  mindSymptoms    String?
+
+  // Particulars (system-wise)
+  particulars     Json?    // {head, eyes, throat, chest, abdomen, skin ...}
+
+  // Rubrics & Remedy
+  rubrics         Json?    // [{text, grade, chapter}]
+  remedy          String?
+  potency         String?  // 30C | 200C | 1M | 10M | CM
+  repetition      String?  // Once daily | Weekly | SOS
+  miasm           String?  // Psora | Sycosis | Syphilis | Tubercular
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("homeopathy_cases")
+}
+
+// ─── VITALS ──────────────────────────────────────────────────
+model Vitals {
+  id           String   @id @default(uuid())
+  visitId      String   @unique
+  visit        Visit    @relation(fields: [visitId], references: [id])
+  weightKg     Decimal?
+  heightCm     Decimal?
+  bpSystolic   Int?
+  bpDiastolic  Int?
+  temperature  Decimal?
+  pulseRate    Int?
+  recordedAt   DateTime @default(now())
+
+  @@map("vitals")
+}
+
+// ─── PAYMENTS ────────────────────────────────────────────────
+model Payment {
+  id             String      @id @default(uuid())
+  visitId        String      @unique
+  visit          Visit       @relation(fields: [visitId], references: [id])
+  amount         Decimal
+  mode           PaymentMode
+  transactionRef String?
+  receiptUrl     String?
+  createdAt      DateTime    @default(now())
+
+  @@map("payments")
+}
+
+// ─── FOLLOW-UPS (Reminder Engine) ────────────────────────────
+model FollowUp {
+  id          String       @id @default(uuid())
+  visitId     String
+  visit       Visit        @relation(fields: [visitId], references: [id])
+  patientId   String
+  patient     Patient      @relation(fields: [patientId], references: [id])
+  clinicId    String
+  clinic      Clinic       @relation(fields: [clinicId], references: [id])
+
+  dueDate     DateTime
+  type        FollowUpType
+  status      FollowUpStatus @default(PENDING)
+  channel     Channel        @default(WHATSAPP)
+  templateId  String?
+  sentAt      DateTime?
+  response    String?
+
+  createdAt   DateTime     @default(now())
+
+  @@map("follow_ups")
+}
+
+enum FollowUpType {
+  THREE_DAY
+  SEVEN_DAY
+  FIFTEEN_DAY
+  MONTHLY
+  CUSTOM
+}
+
+enum FollowUpStatus {
+  PENDING
+  SENT
+  DONE
+  SKIPPED
+  FAILED
+}
+
+enum Channel {
+  WHATSAPP
+  SMS
+  VOICE
+  EMAIL
+}
+
+// ─── NOTIFICATION TEMPLATES ───────────────────────────────────
+model NotificationTemplate {
+  id          String   @id @default(uuid())
+  clinicId    String
+  clinic      Clinic   @relation(fields: [clinicId], references: [id])
+  templateKey String   // followup_3d | followup_7d | thankyou | birthday
+  language    String   // en | hi | mr
+  channel     Channel
+  body        String   // uses {patient_name} {doctor_name} {clinic_name}
+  createdAt   DateTime @default(now())
+
+  @@map("notification_templates")
+}
+
+// ─── FAMILY HISTORY ───────────────────────────────────────────
+model FamilyHistory {
+  id        String  @id @default(uuid())
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id])
+  relation  String  // Father | Mother | Sibling | Grandparent
+  condition String
+  notes     String?
+
+  @@map("family_history")
+}
+
+// ─── DOCUMENTS ────────────────────────────────────────────────
+model Document {
+  id         String   @id @default(uuid())
+  patientId  String
+  patient    Patient  @relation(fields: [patientId], references: [id])
+  fileUrl    String
+  fileType   String   // pdf | image | report
+  label      String?
+  uploadedAt DateTime @default(now())
+
+  @@map("documents")
+}
+
+// ─── OPD CONSENT ─────────────────────────────────────────────
+model Consent {
+  id                  String   @id @default(uuid())
+  patientId           String
+  patient             Patient  @relation(fields: [patientId], references: [id])
+
+  // From Shree Sai case paper exactly
+  consentText         String   // the legal OPD consent paragraph
+  patientSignUrl      String?  // digital signature image
+  patientThumbUrl     String?  // left thumb impression image
+  attenderName        String?
+  attenderSignUrl     String?
+  attenderThumbUrl    String?
+  consentDate         DateTime @default(now())
+
+  @@map("consents")
+}
