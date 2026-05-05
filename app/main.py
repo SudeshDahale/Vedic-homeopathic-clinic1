@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import create_tables
-from app.routers import analytics
+from app.routers import analytics, auth
 from app.jobs.reminder_cron import start_scheduler
 
 app = FastAPI(
@@ -13,7 +13,6 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# CORS (for frontend later)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -22,32 +21,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register routers
+# All routers registered here
+app.include_router(auth.router)
 app.include_router(analytics.router)
 
-
-# ✅ Startup event (CORRECT PLACE)
 @app.on_event("startup")
 def startup():
     create_tables()
-    start_scheduler()   # 🔥 scheduler starts here (only once)
+    start_scheduler()
     print("✅ All tables created in Supabase")
     print("✅ Clinic Growth Engine running")
-    print("✅ Scheduler started")
 
-
-# Root route
 @app.get("/")
 def root():
     return {
-        "status": "running",
-        "app": settings.APP_NAME,
+        "status":  "running",
+        "app":     settings.APP_NAME,
         "version": "1.0.0",
-        "docs": "/docs"
+        "docs":    "/docs"
     }
 
-
-# Health check
 @app.get("/health")
 def health_check():
     return {"status": "healthy"}
