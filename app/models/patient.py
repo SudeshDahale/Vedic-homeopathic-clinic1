@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, Date, Boolean, Enum as SQLEnum
+from sqlalchemy import Column, String, Integer, Date, DateTime, Boolean, Numeric, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
 import enum
@@ -26,10 +26,9 @@ class PatientType(str, enum.Enum):
 class Patient(BaseModel):
     __tablename__ = "patients"
 
-    # 🔥 DO NOT define id here → BaseModel already gives STRING UUID id
+    # 🔥 ID comes from BaseModel (UUID string)
 
     clinic_id = Column(String, nullable=False, index=True)
-
     reg_no = Column(Integer, nullable=False)
 
     title = Column(String, nullable=True)
@@ -68,6 +67,16 @@ class Patient(BaseModel):
     anniversary = Column(Date, nullable=True)
     is_active = Column(Boolean, default=True)
 
+    # 🔥 Growth Engine Fields (NEW — safe to add now)
+    last_visit_date = Column(DateTime, nullable=True)
+    expected_followup_days = Column(Integer, default=7)
+    total_visits = Column(Integer, default=0)
+    total_spent = Column(Numeric(10, 2), default=0)
+    patient_value_score = Column(Numeric(5, 2), default=0)
+    is_missed = Column(Boolean, default=False)
+    missed_since = Column(DateTime, nullable=True)
+
+    # Relationships
     visits = relationship("Visit", back_populates="patient")
     follow_ups = relationship("FollowUp", back_populates="patient")
     consents = relationship("Consent", back_populates="patient")
