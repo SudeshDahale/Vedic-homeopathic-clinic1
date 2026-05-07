@@ -157,6 +157,7 @@ def close_visit(db: Session, visit_id: str,
     2. Patient stats updated — total_visits, total_spent, value_score
     3. Follow-ups auto-scheduled — patient gets reminder, returns = more revenue
     4. is_missed flag reset — patient no longer in missed list
+    5. Auto thank-you WhatsApp sent after visit completion
 
     Both Allopathy and Homeopathy:
     Fee is ALWAYS manually entered here. No fixed fee ever.
@@ -192,7 +193,9 @@ def close_visit(db: Session, visit_id: str,
         mode     = pay_mode
     )
     db.add(payment)
+
     db.commit()
+    db.refresh(visit)
 
     # Update patient lifetime stats
     update_patient_stats(db, visit.patient_id, float(data.fee))
@@ -206,6 +209,36 @@ def close_visit(db: Session, visit_id: str,
         disease_type = visit.disease_type,
         channel      = data.followup_channel or "WHATSAPP"
     )
+
+    # Auto-send thank-you WhatsApp message
+    try:
+        from app.models.patient import Patient
+        from app.models.clinic import Clinic
+        from app.services.whatsapp_service import send_thankyou_message
+        import asyncio
+
+        patient = db.query(Patient).filter(
+            Patient.id == visit.patient_id
+        ).first()
+
+        clinic = db.query(Clinic).filter(
+            Clinic.id == clinic_id
+        ).first()
+
+        if patient and patient.phone_mobile:
+            asyncio.create_task(
+                send_thankyou_message(
+                    phone        = patient.phone_mobile,
+                    patient_name = f"{patient.first_name} {patient.last_name or ''}".strip(),
+                    doctor_name  = clinic.doctor_name if clinic else "Doctor",
+                    clinic_name  = clinic.name if clinic else "Clinic",
+                    clinic_phone = clinic.phone if clinic else "",
+                    language     = patient.language_pref or "en"
+                )
+            )
+
+    except Exception as e:
+        print(f"Thank-you message error: {e}")
 
     return {
         "status":              "closed",
@@ -279,9 +312,11 @@ def _get_visit(db: Session, visit_id: str, clinic_id: str) -> Visit:
         Visit.id        == visit_id,
         Visit.clinic_id == clinic_id
     ).first()
+
     if not visit:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Visit not found"
         )
+
     return visit
