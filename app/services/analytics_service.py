@@ -1,50 +1,165 @@
-from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from app.database import get_db
-from app.services import analytics_service
+from sqlalchemy import func
+from datetime import datetime, timedelta
 
-router = APIRouter(prefix="/analytics", tags=["Analytics"])
+from app.models.visit import Visit, PaymentStatus
+from app.models.patient import Patient
+from app.models.reminder import FollowUp, FollowUpStatus
 
-@router.get("/dashboard")
-def get_dashboard(clinic_id: str, db: Session = Depends(get_db)):
-    """
-    WHY this single endpoint: Doctor opens app, ONE call loads everything.
-    Today's revenue, missed patients, follow-ups due, growth %.
-    No loading 5 screens — one dashboard, all action items.
-    """
+
+# ─────────────────────────────────────────────
+# DAILY REVENUE
+# ─────────────────────────────────────────────
+def daily_revenue(db: Session, clinic_id: str):
+
+    today = datetime.utcnow().date()
+
+    revenue = db.query(
+        func.sum(Visit.fee)
+    ).filter(
+        Visit.clinic_id == clinic_id,
+        Visit.payment_status == PaymentStatus.PAID,
+        func.date(Visit.visit_date) == today
+    ).scalar()
+
     return {
-        "daily_revenue":    analytics_service.get_daily_revenue(db, clinic_id),
-        "monthly_revenue":  analytics_service.get_monthly_revenue(db, clinic_id),
-        "missed_patients":  analytics_service.get_missed_patients(db, clinic_id),
-        "retention":        analytics_service.get_retention_rate(db, clinic_id),
-        "followups_today":  analytics_service.get_followups_due_today(db, clinic_id),
-        "top_patients":     analytics_service.get_top_patients(db, clinic_id, limit=5)
+        "date": str(today),
+        "revenue": float(revenue or 0)
     }
 
-@router.get("/revenue/daily")
-def daily_revenue(clinic_id: str, db: Session = Depends(get_db)):
-    return analytics_service.get_daily_revenue(db, clinic_id)
 
-@router.get("/revenue/monthly")
-def monthly_revenue(clinic_id: str, db: Session = Depends(get_db)):
-    return analytics_service.get_monthly_revenue(db, clinic_id)
+# ─────────────────────────────────────────────
+# MONTHLY REVENUE
+# ─────────────────────────────────────────────
+def monthly_revenue(db: Session, clinic_id: str):
 
-@router.get("/missed-patients")
-def missed_patients(clinic_id: str, db: Session = Depends(get_db)):
-    """
-    WHY: Shows doctor exactly how much money walked out the door.
-    '8 missed patients = ₹4,000 potential loss this week' = doctor acts.
-    """
-    return analytics_service.get_missed_patients(db, clinic_id)
+    now = datetime.utcnow()
 
-@router.get("/retention")
-def retention(clinic_id: str, db: Session = Depends(get_db)):
-    return analytics_service.get_retention_rate(db, clinic_id)
+    revenue = db.query(
+        func.sum(Visit.fee)
+    ).filter(
+        Visit.clinic_id == clinic_id,
+        Visit.payment_status == PaymentStatus.PAID,
+        func.extract("month", Visit.visit_date) == now.month,
+        func.extract("year", Visit.visit_date) == now.year
+    ).scalar()
 
-@router.get("/top-patients")
-def top_patients(clinic_id: str, limit: int = 10, db: Session = Depends(get_db)):
-    return analytics_service.get_top_patients(db, clinic_id, limit)
+    return {
+        "month": now.strftime("%B"),
+        "revenue": float(revenue or 0)
+    }
 
-@router.get("/followups/today")
-def followups_today(clinic_id: str, db: Session = Depends(get_db)):
-    return analytics_service.get_followups_due_today(db, clinic_id)
+
+# ─────────────────────────────────────────────
+# MISSED PATIENTS
+# ─────────────────────────────────────────────
+def missed_patients(db: Session, clinic_id: str):
+
+    cutoff = datetime.utcnow() - timedelta(days=30)
+
+    patients = db.query(Patient).filter(
+        Patient.clinic_id == clinic_id
+    ).all()
+
+    missed = []
+
+    for patient in patients:
+
+        last_visit = db.query(Visit).filter(
+            Visit.patient_id == patient.id
+        ).order_by(
+            Visit.visit_date.desc()
+        ).first()
+
+        if last_visit and last_visit.visit_date < cutoff:
+
+            missed.append({
+                "patient_id": patient.id,
+                "name": f"{patient.first_name} {patient.last_name or ''}".strip(),
+                "last_visit": str(last_visit.visit_date.date())
+            })
+
+    return {
+        "count": len(missed),
+        "patients": missed
+    }
+
+
+# ─────────────────────────────────────────────
+# RETENTION RATE
+# ─────────────────────────────────────────────
+def retention_rate(db: Session, clinic_id: str):
+
+    total_patients = db.query(Patient).filter(
+        Patient.clinic_id == clinic_id
+    ).count()
+
+    returning = db.query(
+        Visit.patient_id
+    ).filter(
+        Visit.clinic_id == clinic_id
+    ).distinct().count()
+
+    rate = 0
+
+    if total_patients > 0:
+        rate = (returning / total_patients) * 100
+
+    return {
+        "total_patients": total_patients,
+        "returning_patients": returning,
+        "retention_rate": round(rate, 2)
+    }
+
+
+# ─────────────────────────────────────────────
+# FOLLOWUPS DUE TODAY
+# ─────────────────────────────────────────────
+def followups_due_today(db: Session, clinic_id: str):
+
+    today = datetime.utcnow().date()
+
+    followups = db.query(FollowUp).filter(
+        FollowUp.clinic_id == clinic_id,
+        FollowUp.status == FollowUpStatus.PENDING
+    ).all()
+
+    due_today = [
+        f for f in followups
+        if f.due_date and f.due_date.date() <= today
+    ]
+
+    return {
+        "date": str(today),
+        "count": len(due_today)
+    }
+
+
+# ─────────────────────────────────────────────
+# TOP PATIENTS
+# ─────────────────────────────────────────────
+def top_patients(
+    db: Session,
+    clinic_id: str,
+    limit: int = 5
+):
+
+    patients = db.query(Patient).filter(
+        Patient.clinic_id == clinic_id
+    ).limit(limit).all()
+
+    result = []
+
+    for patient in patients:
+
+        visits = db.query(Visit).filter(
+            Visit.patient_id == patient.id
+        ).count()
+
+        result.append({
+            "patient_id": patient.id,
+            "name": f"{patient.first_name} {patient.last_name or ''}".strip(),
+            "visits": visits
+        })
+
+    return result
