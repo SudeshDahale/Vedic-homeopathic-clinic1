@@ -4,7 +4,10 @@ from app.config import settings
 from app.database import create_tables
 from app.routers import analytics, auth, patients, visits, billing
 from app.jobs.reminder_cron import start_scheduler
-from app.routers import analytics, auth, patients, visits, billing, reminders, queue, whatsapp
+from app.routers import (
+    analytics, auth, patients, visits,
+    billing, reminders, queue, whatsapp, prescriptions
+)
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -31,6 +34,7 @@ app.include_router(analytics.router)
 app.include_router(reminders.router)
 app.include_router(queue.router)
 app.include_router(whatsapp.router)
+app.include_router(prescriptions.router)
 
 @app.on_event("startup")
 def startup():

@@ -5,155 +5,327 @@ import pytz
 
 IST = pytz.timezone("Asia/Kolkata")
 
-# ── Message Templates ──────────────────────────────────────
-# WHY templates per language: Patient receives message in their
-# own language = higher chance they read it and return.
+# ─────────────────────────────────────────────────────────────
+# MESSAGE TEMPLATES
+# Multi-language templates for better patient engagement
+# Supported languages:
+# en = English
+# hi = Hindi
+# mr = Marathi
+# ─────────────────────────────────────────────────────────────
 
 TEMPLATES = {
+
+    # ── 3 DAY FOLLOWUP ──────────────────────────────────────
     "followup_3d": {
-        "en": "Dear {name}, Dr. {doctor} from {clinic} is following up on your recent visit. How are you feeling? Please visit us if needed. Call: {phone}",
-        "hi": "प्रिय {name}, {clinic} से Dr. {doctor} आपकी देखभाल के लिए संपर्क कर रहे हैं। आप कैसा महसूस कर रहे हैं? जरूरत हो तो आएं। Call: {phone}",
-        "mr": "प्रिय {name}, {clinic} मधून Dr. {doctor} तुमची काळजी घेत आहेत। तुम्ही कसे आहात? गरज असल्यास भेट द्या। Call: {phone}",
+        "en": (
+            "Dear {name}, hope you are feeling better after your visit "
+            "at {clinic}. Dr. {doctor} is checking on your progress. "
+            "If you have any concerns please visit us or call {phone} 🙏"
+        ),
+        "hi": (
+            "प्रिय {name}, {clinic} में आपकी visit के बाद आप कैसा "
+            "महसूस कर रहे हैं? Dr. {doctor} आपकी care करते हैं। "
+            "कोई भी समस्या हो तो call करें: {phone} 🙏"
+        ),
+        "mr": (
+            "प्रिय {name}, {clinic} ला भेट दिल्यानंतर तुम्ही कसे "
+            "आहात? Dr. {doctor} तुमची काळजी घेतात. "
+            "काही त्रास असल्यास call करा: {phone} 🙏"
+        ),
     },
+
+    # ── 7 DAY FOLLOWUP ──────────────────────────────────────
     "followup_7d": {
-        "en": "Dear {name}, it's been a week since your visit at {clinic}. Dr. {doctor} recommends a follow-up. Book your appointment: {phone}",
-        "hi": "प्रिय {name}, {clinic} में आपकी visit को एक सप्ताह हो गया है। Dr. {doctor} follow-up की सलाह देते हैं। संपर्क करें: {phone}",
-        "mr": "प्रिय {name}, {clinic} ला भेट देऊन एक आठवडा झाला. Dr. {doctor} follow-up सुचवतात. संपर्क: {phone}",
+        "en": (
+            "Dear {name}, it has been a week since your visit at {clinic}. "
+            "Dr. {doctor} recommends a follow-up checkup to monitor "
+            "your progress. Please book your appointment: {phone} ✅"
+        ),
+        "hi": (
+            "प्रिय {name}, {clinic} में आपकी visit को एक हफ्ता हो गया है। "
+            "Dr. {doctor} आपका follow-up checkup recommend करते हैं। "
+            "Appointment के लिए call करें: {phone} ✅"
+        ),
+        "mr": (
+            "प्रिय {name}, {clinic} ला भेट देऊन एक आठवडा झाला. "
+            "Dr. {doctor} follow-up तपासणी सुचवतात. "
+            "Appointment साठी call करा: {phone} ✅"
+        ),
     },
+
+    # ── 15 DAY FOLLOWUP ─────────────────────────────────────
     "followup_15d": {
-        "en": "Dear {name}, Dr. {doctor} from {clinic} would like to check on your progress. Please schedule your follow-up visit. Call: {phone}",
-        "hi": "प्रिय {name}, Dr. {doctor} आपकी प्रगति जानना चाहते हैं। कृपया follow-up के लिए आएं। Call: {phone}",
-        "mr": "प्रिय {name}, Dr. {doctor} तुमची प्रगती जाणून घेऊ इच्छितात. Follow-up साठी या. Call: {phone}",
+        "en": (
+            "Dear {name}, Dr. {doctor} from {clinic} would like to "
+            "review your treatment progress. A follow-up visit will "
+            "ensure you are on the right path to recovery. Call: {phone}"
+        ),
+        "hi": (
+            "प्रिय {name}, Dr. {doctor} आपके treatment की progress "
+            "देखना चाहते हैं। Follow-up visit से आपकी recovery "
+            "बेहतर होगी। Call करें: {phone}"
+        ),
+        "mr": (
+            "प्रिय {name}, Dr. {doctor} तुमच्या उपचाराची प्रगती "
+            "पाहू इच्छितात. Follow-up visit तुमच्या बरे होण्यास "
+            "मदत करेल. Call करा: {phone}"
+        ),
     },
+
+    # ── MONTHLY FOLLOWUP ────────────────────────────────────
     "followup_monthly": {
-        "en": "Dear {name}, your monthly check-up is due at {clinic}. Dr. {doctor} is expecting you. Call: {phone}",
-        "hi": "प्रिय {name}, {clinic} में आपका monthly check-up बाकी है। Dr. {doctor} आपका इंतज़ार कर रहे हैं। Call: {phone}",
-        "mr": "प्रिय {name}, {clinic} मध्ये तुमची monthly तपासणी बाकी आहे. Dr. {doctor} वाट पाहत आहेत. Call: {phone}",
+        "en": (
+            "Dear {name}, your monthly checkup is due at {clinic}. "
+            "Regular follow-ups help Dr. {doctor} give you the best "
+            "treatment. Book now: {phone} 📅"
+        ),
+        "hi": (
+            "प्रिय {name}, {clinic} में आपका monthly checkup बाकी है। "
+            "Regular follow-up से Dr. {doctor} आपको बेहतर treatment "
+            "दे सकते हैं। अभी book करें: {phone} 📅"
+        ),
+        "mr": (
+            "प्रिय {name}, {clinic} मध्ये तुमची monthly तपासणी बाकी आहे. "
+            "नियमित follow-up मुळे Dr. {doctor} तुम्हाला उत्तम "
+            "उपचार देऊ शकतात. आता book करा: {phone} 📅"
+        ),
     },
+
+    # ── THANK YOU MESSAGE ───────────────────────────────────
     "thankyou": {
-        "en": "Dear {name}, thank you for visiting {clinic}. Dr. {doctor} wishes you a speedy recovery. For queries call: {phone}",
-        "hi": "प्रिय {name}, {clinic} में आने के लिए धन्यवाद। Dr. {doctor} आपके शीघ्र स्वास्थ्य की कामना करते हैं। Call: {phone}",
-        "mr": "प्रिय {name}, {clinic} ला भेट दिल्याबद्दल धन्यवाद. Dr. {doctor} तुमच्या लवकर बरे होण्याची इच्छा करतात. Call: {phone}",
+        "en": (
+            "Dear {name}, thank you for visiting {clinic} today. "
+            "Dr. {doctor} wishes you a speedy recovery. "
+            "Take care and follow the prescribed treatment. "
+            "For any queries call: {phone} 🙏"
+        ),
+        "hi": (
+            "प्रिय {name}, आज {clinic} में आने के लिए धन्यवाद। "
+            "Dr. {doctor} आपके जल्द ठीक होने की कामना करते हैं। "
+            "Prescribed treatment follow करें। "
+            "Call: {phone} 🙏"
+        ),
+        "mr": (
+            "प्रिय {name}, आज {clinic} ला भेट दिल्याबद्दल धन्यवाद. "
+            "Dr. {doctor} तुमच्या लवकर बरे होण्याची इच्छा करतात. "
+            "दिलेले उपचार follow करा. Call: {phone} 🙏"
+        ),
     },
+
+    # ── BIRTHDAY MESSAGE ────────────────────────────────────
     "birthday": {
-        "en": "Dear {name}, wishing you a very Happy Birthday! From Dr. {doctor} and the team at {clinic}. Stay healthy! 🎂",
-        "hi": "प्रिय {name}, आपको जन्मदिन की हार्दिक शुभकामनाएं! Dr. {doctor} और {clinic} की पूरी टीम की ओर से। स्वस्थ रहें! 🎂",
-        "mr": "प्रिय {name}, तुम्हाला वाढदिवसाच्या हार्दिक शुभेच्छा! Dr. {doctor} आणि {clinic} टीमकडून. निरोगी राहा! 🎂",
+        "en": (
+            "🎂 Dear {name}, wishing you a very Happy Birthday! "
+            "May this year bring you good health and happiness. "
+            "From Dr. {doctor} and the entire team at {clinic}. "
+            "Stay healthy! 💐"
+        ),
+        "hi": (
+            "🎂 प्रिय {name}, जन्मदिन की हार्दिक शुभकामनाएं! "
+            "यह साल आपके लिए स्वास्थ्य और खुशियां लेकर आए। "
+            "Dr. {doctor} और {clinic} की पूरी team की ओर से। "
+            "स्वस्थ रहें! 💐"
+        ),
+        "mr": (
+            "🎂 प्रिय {name}, वाढदिवसाच्या हार्दिक शुभेच्छा! "
+            "हे वर्ष तुम्हाला आरोग्य आणि आनंद देवो. "
+            "Dr. {doctor} आणि {clinic} टीमकडून. "
+            "निरोगी राहा! 💐"
+        ),
+    },
+
+    # ── MISSED PATIENT ──────────────────────────────────────
+    "missed_patient": {
+        "en": (
+            "Dear {name}, we have been missing you at {clinic}. "
+            "Dr. {doctor} is concerned about your health. "
+            "Please visit us for a checkup when you get time. "
+            "Call: {phone} ❤️"
+        ),
+        "hi": (
+            "प्रिय {name}, {clinic} में आपकी याद आ रही है। "
+            "Dr. {doctor} आपकी health को लेकर concerned हैं। "
+            "जब time मिले, checkup के लिए आएं। "
+            "Call: {phone} ❤️"
+        ),
+        "mr": (
+            "प्रिय {name}, {clinic} मध्ये तुमची आठवण येत आहे. "
+            "Dr. {doctor} तुमच्या आरोग्याबद्दल काळजीत आहेत. "
+            "वेळ मिळाल्यावर तपासणीसाठी या. "
+            "Call: {phone} ❤️"
+        ),
     }
 }
 
-def get_template(template_key: str, language: str) -> str:
-    """Get message template for given key and language"""
-    templates = TEMPLATES.get(template_key, TEMPLATES["followup_7d"])
-    # Fall back to English if language not found
+# ─────────────────────────────────────────────────────────────
+# TEMPLATE FUNCTIONS
+# ─────────────────────────────────────────────────────────────
+
+def get_template(template_key: str, language: str = "en") -> str:
+    """
+    Fetch template by key and language.
+    Falls back to English if language not found.
+    """
+
+    templates = TEMPLATES.get(template_key)
+
+    if not templates:
+        templates = TEMPLATES["followup_7d"]
+
     return templates.get(language, templates["en"])
 
-def fill_template(template: str, patient_name: str,
-                  doctor_name: str, clinic_name: str,
-                  clinic_phone: str) -> str:
-    """Fill template variables with real data"""
+
+def fill_template(
+    template: str,
+    patient_name: str,
+    doctor_name: str,
+    clinic_name: str,
+    clinic_phone: str
+) -> str:
+    """
+    Replace placeholders with actual values.
+    """
+
     return template.format(
-        name    = patient_name,
-        doctor  = doctor_name,
-        clinic  = clinic_name,
-        phone   = clinic_phone
+        name=patient_name,
+        doctor=doctor_name,
+        clinic=clinic_name,
+        phone=clinic_phone
     )
 
-# ── Sending Functions ──────────────────────────────────────
+
+# ─────────────────────────────────────────────────────────────
+# WHATSAPP SENDER
+# ─────────────────────────────────────────────────────────────
 
 def send_whatsapp(phone: str, message: str) -> dict:
     """
-    Send WhatsApp message via Twilio.
-    Currently MOCKED — logs message instead of sending.
-    To activate: add TWILIO credentials to .env
-    WHY mock first: Build and test entire flow without paying Twilio.
-    Switch to real sending by changing 3 lines only.
+    Send WhatsApp message using Twilio.
+    Falls back to MOCK mode if credentials are missing.
     """
-    twilio_sid   = os.getenv("TWILIO_ACCOUNT_SID", "")
-    twilio_token = os.getenv("TWILIO_AUTH_TOKEN", "")
-    twilio_from  = os.getenv("TWILIO_WHATSAPP_FROM", "")
 
-    # If Twilio credentials exist — send real message
+    twilio_sid = os.getenv("TWILIO_ACCOUNT_SID", "")
+    twilio_token = os.getenv("TWILIO_AUTH_TOKEN", "")
+    twilio_from = os.getenv("TWILIO_WHATSAPP_FROM", "")
+
+    # REAL SEND
     if twilio_sid and twilio_token and twilio_from:
+
         try:
             from twilio.rest import Client
+
             client = Client(twilio_sid, twilio_token)
+
             msg = client.messages.create(
-                from_ = f"whatsapp:{twilio_from}",
-                to    = f"whatsapp:+91{phone}",
-                body  = message
+                from_=f"whatsapp:{twilio_from}",
+                to=f"whatsapp:+91{phone}",
+                body=message
             )
+
             return {
-                "status":  "sent",
+                "status": "sent",
                 "channel": "whatsapp",
-                "sid":     msg.sid,
-                "phone":   phone
-            }
-        except Exception as e:
-            return {
-                "status":  "failed",
-                "channel": "whatsapp",
-                "error":   str(e),
-                "phone":   phone
+                "sid": msg.sid,
+                "phone": phone
             }
 
-    # MOCK — just log it
-    print(f"\n📱 WHATSAPP MOCK")
-    print(f"   To:      +91{phone}")
-    print(f"   Message: {message}")
-    print(f"   Time:    {datetime.now(IST).strftime('%d-%m-%Y %H:%M')}\n")
+        except Exception as e:
+
+            return {
+                "status": "failed",
+                "channel": "whatsapp",
+                "error": str(e),
+                "phone": phone
+            }
+
+    # MOCK MODE
+    print("\n📱 WHATSAPP MOCK")
+    print(f"To: +91{phone}")
+    print(f"Message: {message}")
+    print(
+        f"Time: {datetime.now(IST).strftime('%d-%m-%Y %H:%M')}\n"
+    )
 
     return {
-        "status":  "mocked",
+        "status": "mocked",
         "channel": "whatsapp",
-        "phone":   phone,
+        "phone": phone,
         "message": message,
-        "note":    "Add Twilio credentials to .env to send real messages"
+        "note": "Add Twilio credentials to enable real sending"
     }
+
+
+# ─────────────────────────────────────────────────────────────
+# SMS SENDER
+# ─────────────────────────────────────────────────────────────
 
 def send_sms(phone: str, message: str) -> dict:
     """
-    Send SMS via Twilio.
-    Used as fallback if WhatsApp fails.
+    Send SMS using Twilio.
     """
-    twilio_sid   = os.getenv("TWILIO_ACCOUNT_SID", "")
+
+    twilio_sid = os.getenv("TWILIO_ACCOUNT_SID", "")
     twilio_token = os.getenv("TWILIO_AUTH_TOKEN", "")
 
     if twilio_sid and twilio_token:
+
         try:
             from twilio.rest import Client
-            client  = Client(twilio_sid, twilio_token)
-            msg = client.messages.create(
-                from_ = os.getenv("TWILIO_SMS_FROM", ""),
-                to    = f"+91{phone}",
-                body  = message
-            )
-            return {"status": "sent", "channel": "sms", "sid": msg.sid}
-        except Exception as e:
-            return {"status": "failed", "channel": "sms", "error": str(e)}
 
-    # MOCK
-    print(f"\n📨 SMS MOCK")
-    print(f"   To:      +91{phone}")
-    print(f"   Message: {message}\n")
+            client = Client(twilio_sid, twilio_token)
+
+            msg = client.messages.create(
+                from_=os.getenv("TWILIO_SMS_FROM", ""),
+                to=f"+91{phone}",
+                body=message
+            )
+
+            return {
+                "status": "sent",
+                "channel": "sms",
+                "sid": msg.sid
+            }
+
+        except Exception as e:
+
+            return {
+                "status": "failed",
+                "channel": "sms",
+                "error": str(e)
+            }
+
+    # MOCK MODE
+    print("\n📨 SMS MOCK")
+    print(f"To: +91{phone}")
+    print(f"Message: {message}\n")
 
     return {
-        "status":  "mocked",
+        "status": "mocked",
         "channel": "sms",
-        "phone":   phone,
+        "phone": phone,
         "message": message
     }
 
-def send_notification(channel: str, phone: str,
-                      message: str) -> dict:
+
+# ─────────────────────────────────────────────────────────────
+# MAIN NOTIFICATION ROUTER
+# ─────────────────────────────────────────────────────────────
+
+def send_notification(
+    channel: str,
+    phone: str,
+    message: str
+) -> dict:
     """
-    Route to correct channel.
-    WHY single entry point: Caller doesn't need to know
-    which channel — just calls send_notification().
+    Main notification router.
     """
+
     if channel == "WHATSAPP":
         return send_whatsapp(phone, message)
+
     elif channel == "SMS":
         return send_sms(phone, message)
-    else:
-        return send_whatsapp(phone, message)  # default to WhatsApp
+
+    # DEFAULT = WHATSAPP
+    return send_whatsapp(phone, message)
