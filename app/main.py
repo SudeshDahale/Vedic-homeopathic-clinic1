@@ -20,7 +20,8 @@ from app.routers import (
 
 # Scheduler
 from app.jobs.reminder_cron import start_scheduler
-
+from app.routers.whatsapp import router as webhook_router
+from app.routers.whatsapp import send_router as whatsapp_send_router
 
 # =========================================================
 # FastAPI App
@@ -67,6 +68,8 @@ app.include_router(reminders.router)
 app.include_router(queue.router)
 app.include_router(whatsapp.router)
 app.include_router(prescriptions.router)
+app.include_router(webhook_router)
+app.include_router(whatsapp_send_router)
 
 
 # =========================================================
