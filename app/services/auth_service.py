@@ -1,252 +1,177 @@
-# =====================================================
-# FILE: app/services/auth_service.py
-# =====================================================
-
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
-
 from fastapi import HTTPException, status
-
-from app.models.user import User, UserRole
+from datetime import datetime, timedelta
+from app.models.user import User
 from app.models.clinic import Clinic
-
-from app.schemas.auth import (
-    RegisterRequest,
-    LoginRequest,
-    SignupRequest
-)
-
-from app.utils.security import (
-    hash_password,
-    verify_password,
-    create_access_token
-)
-
+from app.schemas.auth import SignupRequest, LoginRequest, CreateStaffRequest
+from app.utils.security import hash_password, verify_password, create_access_token
+from app.enums import UserRole, SubscriptionPlan, SubscriptionStatus
 import uuid
+import pytz
 
+IST = pytz.timezone("Asia/Kolkata")
 
-# =====================================================
-# REGISTER RECEPTIONIST / STAFF
-# =====================================================
-def register_user(
-    db: Session,
-    data: RegisterRequest
-) -> User:
-
+def signup_clinic(db: Session, data: SignupRequest) -> dict:
+    """
+    Create new clinic + doctor account in one step.
+    Only doctors can create an account.
+    Receptionists are created BY the doctor.
+    """
+    # Check duplicates
     existing = db.query(User).filter(
-        User.phone == data.phone
+        or_(User.email == data.email, User.phone == data.phone)
     ).first()
-
     if existing:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Phone number already registered"
-        )
-
-    existing_email = None
-
-    if data.email:
-        existing_email = db.query(User).filter(
-            User.email == data.email
-        ).first()
-
-    if existing_email:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
-        )
-
-    user = User(
-        clinic_id=data.clinic_id,
-        name=data.name,
-        phone=data.phone,
-        email=data.email,
-
-        # IMPORTANT
-        hashed_password=hash_password(data.password),
-
-        role=(
-            UserRole.DOCTOR
-            if data.role == "DOCTOR"
-            else UserRole.RECEPTIONIST
-        ),
-
-        is_active=True
-    )
-
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-
-    return user
-
-
-# =====================================================
-# PUBLIC CLINIC SIGNUP
-# =====================================================
-def signup_clinic(
-    db: Session,
-    data: SignupRequest
-) -> dict:
-
-    # Check email
-    existing_email = db.query(User).filter(
-        User.email == data.email
-    ).first()
-
-    if existing_email:
-        raise HTTPException(
             status_code=400,
-            detail="Email already registered"
+            detail="Email or phone already registered. Please login."
         )
 
-    # Check phone
-    existing_phone = db.query(User).filter(
-        User.phone == data.phone
-    ).first()
-
-    if existing_phone:
-        raise HTTPException(
-            status_code=400,
-            detail="Phone already registered"
-        )
-
-    # Create clinic
-    clinic_id = str(uuid.uuid4())
+    # Create clinic with trial
+    clinic_id  = str(uuid.uuid4())
+    trial_end  = datetime.now(IST) + timedelta(days=30)
 
     clinic = Clinic(
-        id=clinic_id,
-        name=data.clinic_name,
-        doctor_name=data.doctor_name,
-        qualification=data.qualification,
-        city=data.city,
-        phone=data.phone,
-        email=data.email,
-        timings=data.timings
+        id                  = clinic_id,
+        name                = data.clinic_name,
+        doctor_name         = data.doctor_name,
+        qualification       = data.qualification,
+        city                = data.city,
+        phone               = data.phone,
+        email               = data.email,
+        timings             = data.timings,
+        plan_id             = SubscriptionPlan.STARTER,
+        subscription_status = SubscriptionStatus.TRIAL,
+        trial_end_date      = trial_end,
+        staff_limit         = 2
     )
-
     db.add(clinic)
 
     # Create doctor user
     user = User(
-        clinic_id=clinic_id,
-        name=data.doctor_name,
-        phone=data.phone,
-        email=data.email,
-
-        # IMPORTANT
-        hashed_password=hash_password(data.password),
-
-        role=UserRole.DOCTOR,
-        is_active=True
+        clinic_id = clinic_id,
+        name      = data.doctor_name,
+        phone     = data.phone,
+        email     = data.email,
+        password  = hash_password(data.password),
+        role      = UserRole.DOCTOR
     )
-
     db.add(user)
-
     db.commit()
     db.refresh(user)
 
-    # Create token
     token = create_access_token({
-        "user_id": str(user.id),
-        "clinic_id": clinic_id,
-        "role": user.role.value,
-        "name": user.name,
+        "user_id":     user.id,
+        "clinic_id":   clinic_id,
+        "role":        UserRole.DOCTOR,
+        "name":        data.doctor_name,
         "clinic_name": data.clinic_name
     })
 
     return {
         "access_token": token,
-        "token_type": "bearer",
-        "role": user.role.value,
-        "name": user.name,
-        "clinic_id": clinic_id,
-        "clinic_name": data.clinic_name,
-        "user_id": str(user.id),
-        "message": "Account created successfully"
+        "token_type":   "bearer",
+        "role":         UserRole.DOCTOR,
+        "name":         data.doctor_name,
+        "clinic_id":    clinic_id,
+        "clinic_name":  data.clinic_name,
+        "user_id":      user.id,
+        "plan":         SubscriptionPlan.STARTER,
+        "message":      "Clinic account created! 30-day free trial started."
     }
 
-
-# =====================================================
-# LOGIN
-# =====================================================
-def login_user(
-    db: Session,
-    data: LoginRequest
-) -> dict:
-
-    # Login with phone OR email
+def login_user(db: Session, data: LoginRequest) -> dict:
+    """Login with email OR phone"""
     user = db.query(User).filter(
         or_(
-            User.phone == data.login,
-            User.email == data.login
+            User.email == data.login,
+            User.phone == data.login
         )
     ).first()
 
-    if not user:
+    if not user or not verify_password(data.password, user.password):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email/phone or password"
+            status_code=401,
+            detail="Invalid credentials. Please check email/phone and password."
         )
 
-    # Verify password
-    if not verify_password(
-        data.password,
-        user.hashed_password
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email/phone or password"
-        )
-
-    # Active check
     if not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account is deactivated"
+            status_code=403,
+            detail="Account deactivated. Contact your doctor."
         )
 
-    # Get clinic
-    clinic = db.query(Clinic).filter(
-        Clinic.id == user.clinic_id
-    ).first()
+    # Get clinic info
+    clinic = db.query(Clinic).filter(Clinic.id == user.clinic_id).first()
+    clinic_name = clinic.name if clinic else "Clinic"
+    plan        = clinic.plan_id if clinic else SubscriptionPlan.STARTER
 
-    # Create JWT
+    # Build branding if enabled
+    branding = None
+    if clinic and clinic.branding_enabled:
+        branding = {
+            "primary_color":   clinic.primary_color,
+            "secondary_color": clinic.secondary_color,
+            "custom_logo":     clinic.custom_logo
+        }
+
     token = create_access_token({
-        "user_id": str(user.id),
-        "clinic_id": user.clinic_id,
-        "role": user.role.value,
-        "name": user.name,
-        "clinic_name": clinic.name if clinic else ""
+        "user_id":     user.id,
+        "clinic_id":   user.clinic_id,
+        "role":        user.role,
+        "name":        user.name,
+        "clinic_name": clinic_name
     })
 
     return {
         "access_token": token,
-        "token_type": "bearer",
-        "role": user.role.value,
-        "name": user.name,
-        "clinic_id": user.clinic_id,
-        "clinic_name": clinic.name if clinic else "",
-        "user_id": str(user.id)
+        "token_type":   "bearer",
+        "role":         user.role,
+        "name":         user.name,
+        "clinic_id":    user.clinic_id,
+        "clinic_name":  clinic_name,
+        "user_id":      user.id,
+        "plan":         plan,
+        "branding":     branding
     }
 
+def create_staff_account(db: Session, data: CreateStaffRequest,
+                         clinic_id: str) -> User:
+    """
+    Doctor creates receptionist/staff account.
+    Staff cannot self-signup — only doctor can add them.
+    """
+    # Check clinic staff limit
+    clinic = db.query(Clinic).filter(Clinic.id == clinic_id).first()
+    from app.models.staff import Staff
+    current_staff = db.query(User).filter(
+        User.clinic_id == clinic_id,
+        User.role      != UserRole.DOCTOR,
+        User.is_active == True
+    ).count()
 
-# =====================================================
-# GET USER
-# =====================================================
-def get_user_by_id(
-    db: Session,
-    user_id: str
-) -> User:
-
-    user = db.query(User).filter(
-        User.id == user_id
-    ).first()
-
-    if not user:
+    if clinic and current_staff >= (clinic.staff_limit or 2):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            status_code=403,
+            detail=f"Staff limit reached ({clinic.staff_limit}). Upgrade your plan."
         )
 
+    # Check duplicate
+    if data.phone:
+        existing = db.query(User).filter(User.phone == data.phone).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Phone already registered.")
+
+    user = User(
+        clinic_id = clinic_id,
+        name      = data.name,
+        phone     = data.phone,
+        email     = data.email,
+        password  = hash_password(data.password),
+        role      = data.role
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
     return user

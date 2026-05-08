@@ -1,72 +1,102 @@
-# =====================================================
-# FILE: app/routers/auth.py
-# =====================================================
-
-from fastapi import (
-    APIRouter,
-    Depends
-)
-
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-
 from app.database import get_db
-
 from app.schemas.auth import (
-    RegisterRequest,
-    LoginRequest,
-    SignupRequest
+    SignupRequest, LoginRequest,
+    CreateStaffRequest, LoginResponse, UserResponse
 )
+from app.services import auth_service
+from app.middleware.auth_middleware import get_current_user, doctor_only
+from app.models.user import User
+from app.models.clinic import Clinic
 
-from app.services.auth_service import (
-    register_user,
-    login_user,
-    signup_clinic
-)
+router = APIRouter(prefix="/auth", tags=["Auth"])
 
-router = APIRouter(
-    prefix="/auth",
-    tags=["Authentication"]
-)
-
-
-# =====================================================
-# SIGNUP
-# =====================================================
 @router.post("/signup")
-def signup(
-    data: SignupRequest,
-    db: Session = Depends(get_db)
+def signup(data: SignupRequest, db: Session = Depends(get_db)):
+    """
+    New clinic registration.
+    Creates clinic + doctor account in one step.
+    Starts 30-day free trial automatically.
+    """
+    return auth_service.signup_clinic(db, data)
+
+@router.post("/login", response_model=LoginResponse)
+def login(data: LoginRequest, db: Session = Depends(get_db)):
+    """Login with email OR phone + password"""
+    return auth_service.login_user(db, data)
+
+@router.post("/staff", response_model=UserResponse)
+def create_staff(
+    data:         CreateStaffRequest,
+    db:           Session = Depends(get_db),
+    current_user: User    = Depends(doctor_only)
 ):
-    return signup_clinic(db, data)
+    """
+    Doctor creates receptionist account.
+    Staff cannot self-signup — security requirement.
+    """
+    user = auth_service.create_staff_account(
+        db, data, current_user.clinic_id
+    )
+    return user
 
+@router.get("/me", response_model=UserResponse)
+def get_me(current_user: User = Depends(get_current_user)):
+    """Get current user info"""
+    return current_user
 
-# =====================================================
-# LOGIN
-# =====================================================
-@router.post("/login")
-def login(
-    data: LoginRequest,
-    db: Session = Depends(get_db)
+@router.get("/clinic")
+def get_clinic(
+    db:           Session = Depends(get_db),
+    current_user: User    = Depends(get_current_user)
 ):
-    return login_user(db, data)
-
-
-# =====================================================
-# REGISTER STAFF
-# =====================================================
-@router.post("/register")
-def register(
-    data: RegisterRequest,
-    db: Session = Depends(get_db)
-):
-    user = register_user(db, data)
-
+    """Get current clinic details"""
+    clinic = db.query(Clinic).filter(
+        Clinic.id == current_user.clinic_id
+    ).first()
+    if not clinic:
+        return {"message": "Clinic not set up yet"}
     return {
-        "id": str(user.id),
-        "name": user.name,
-        "phone": user.phone,
-        "email": user.email,
-        "role": user.role.value,
-        "clinic_id": user.clinic_id,
-        "is_active": user.is_active
+        "id":                 clinic.id,
+        "name":               clinic.name,
+        "doctor_name":        clinic.doctor_name,
+        "qualification":      clinic.qualification,
+        "address":            clinic.address,
+        "city":               clinic.city,
+        "phone":              clinic.phone,
+        "email":              clinic.email,
+        "timings":            clinic.timings,
+        "plan":               clinic.plan_id,
+        "subscription_status": clinic.subscription_status,
+        "trial_end_date":     str(clinic.trial_end_date) if clinic.trial_end_date else None,
+        "branding_enabled":   clinic.branding_enabled,
+        "primary_color":      clinic.primary_color,
+        "secondary_color":    clinic.secondary_color
     }
+
+@router.put("/clinic")
+def update_clinic(
+    data:         dict,
+    db:           Session = Depends(get_db),
+    current_user: User    = Depends(doctor_only)
+):
+    """Update clinic details — doctor only"""
+    clinic = db.query(Clinic).filter(
+        Clinic.id == current_user.clinic_id
+    ).first()
+    if not clinic:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Clinic not found")
+
+    allowed = [
+        "name", "doctor_name", "qualification", "address",
+        "city", "phone", "email", "timings",
+        "primary_color", "secondary_color"
+    ]
+    for key, value in data.items():
+        if key in allowed:
+            setattr(clinic, key, value)
+
+    db.commit()
+    return {"message": "Clinic updated successfully"}

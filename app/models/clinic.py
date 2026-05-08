@@ -1,17 +1,34 @@
-from sqlalchemy import Column, String
+from sqlalchemy import Column, String, Boolean, DateTime, Integer
+from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.enums import SubscriptionPlan, SubscriptionStatus
 
 class Clinic(BaseModel):
     __tablename__ = "clinics"
 
+    # Basic info
     name           = Column(String, nullable=False)
     doctor_name    = Column(String, nullable=False)
-    qualification  = Column(String, nullable=True)   # B.H.M.S.
+    qualification  = Column(String, nullable=True)
     address        = Column(String, nullable=True)
     city           = Column(String, nullable=True)
     phone          = Column(String, nullable=True)
     email          = Column(String, nullable=True)
     logo_url       = Column(String, nullable=True)
-    signature_url  = Column(String, nullable=True)   # for receipts
-    timings        = Column(String, nullable=True)   # "10am-2pm, 5pm-9pm"
-    plan_id        = Column(String, default="starter")
+    signature_url  = Column(String, nullable=True)
+    timings        = Column(String, nullable=True)
+
+    # Subscription
+    plan_id              = Column(String, default=SubscriptionPlan.STARTER)
+    subscription_status  = Column(String, default=SubscriptionStatus.TRIAL)
+    trial_end_date       = Column(DateTime, nullable=True)
+    staff_limit          = Column(Integer, default=2)
+
+    # Branding (GROWTH + ENTERPRISE only)
+    branding_enabled  = Column(Boolean, default=False)
+    custom_logo       = Column(String, nullable=True)
+    primary_color     = Column(String, default="#16a34a")
+    secondary_color   = Column(String, default="#2563eb")
+
+    # Settings
+    is_active = Column(Boolean, default=True)

@@ -1,4 +1,5 @@
 import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -15,21 +16,32 @@ from app.routers import (
     reminders,
     queue,
     whatsapp,
-    prescriptions
+    prescriptions,
+    staff,
+    appointments,
+    imports
+)
+
+# Health Router
+from app.routers.health import router as health_router
+
+# WhatsApp Webhook Routers
+from app.routers.whatsapp import (
+    router as webhook_router,
+    send_router as whatsapp_send_router
 )
 
 # Scheduler
 from app.jobs.reminder_cron import start_scheduler
-from app.routers.whatsapp import router as webhook_router
-from app.routers.whatsapp import send_router as whatsapp_send_router
+
 
 # =========================================================
 # FastAPI App
 # =========================================================
 app = FastAPI(
-    title=settings.APP_NAME,
-    description="Clinic Growth Engine — Vedic Homoeopathic Clinic",
-    version="1.0.0",
+    title="Vennova Clinic Growth Engine API",
+    description="AI-powered clinic growth operating system for modern clinics",
+    version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc"
 )
@@ -39,9 +51,11 @@ app = FastAPI(
 # CORS Configuration
 # =========================================================
 # Example:
-# ALLOWED_ORIGINS=http://localhost:3000,https://yourfrontend.com
+# ALLOWED_ORIGINS=http://localhost:3000,https://app.vennova.ai
 #
-# If not set, defaults to "*"
+# Railway ENV:
+# ALLOWED_ORIGINS=https://yourfrontend.com
+# =========================================================
 allowed_origins = os.getenv(
     "ALLOWED_ORIGINS",
     "*"
@@ -59,17 +73,47 @@ app.add_middleware(
 # =========================================================
 # Include Routers
 # =========================================================
+
+# Authentication
 app.include_router(auth.router)
+
+# Patients
 app.include_router(patients.router)
+
+# Visits / Consultations
 app.include_router(visits.router)
+
+# Billing / Payments
 app.include_router(billing.router)
+
+# Analytics
 app.include_router(analytics.router)
+
+# Followups / Reminders
 app.include_router(reminders.router)
+
+# Queue
 app.include_router(queue.router)
+
+# WhatsApp
 app.include_router(whatsapp.router)
-app.include_router(prescriptions.router)
 app.include_router(webhook_router)
 app.include_router(whatsapp_send_router)
+
+# Prescriptions
+app.include_router(prescriptions.router)
+
+# Staff Management
+app.include_router(staff.router)
+
+# Appointments
+app.include_router(appointments.router)
+
+# Imports
+app.include_router(imports.router)
+
+# Health Check
+app.include_router(health_router)
 
 
 # =========================================================
@@ -81,15 +125,17 @@ def startup():
     Runs when FastAPI server starts
     """
 
-    # Create all database tables
+    # Create DB tables
     create_tables()
 
-    # Start APScheduler
+    # Start scheduler
     start_scheduler()
 
-    print("✅ All tables created in Supabase")
-    print("✅ Clinic Growth Engine running")
-    print("✅ Scheduler started")
+    print("✅ Vennova v2.0 — All systems running")
+    print("✅ Database tables initialized")
+    print("✅ APScheduler started")
+    print("✅ Supabase connected")
+    print("✅ WhatsApp services active")
 
 
 # =========================================================
@@ -98,9 +144,9 @@ def startup():
 @app.get("/")
 def root():
     return {
+        "app": "Vennova Clinic Growth Engine",
+        "version": "2.0.0",
         "status": "running",
-        "app": settings.APP_NAME,
-        "version": "1.0.0",
         "docs": "/docs"
     }
 
@@ -109,7 +155,9 @@ def root():
 # Health Check
 # =========================================================
 @app.get("/health")
-def health_check():
+def health():
     return {
-        "status": "healthy"
+        "status": "healthy",
+        "app": "Vennova",
+        "version": "2.0.0"
     }
