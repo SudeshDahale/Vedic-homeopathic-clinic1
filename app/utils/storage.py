@@ -15,16 +15,12 @@ client = create_client(
 
 
 # =========================================================
-# Upload PDF
+# Upload PDF to Supabase Storage
 # =========================================================
 def upload_pdf(
     local_path: str,
     folder: str = "receipts"
 ) -> str:
-    """
-    Upload PDF to Supabase Storage
-    and return permanent public URL.
-    """
 
     # Unique filename
     filename = f"{folder}_{uuid.uuid4().hex[:8]}.pdf"
@@ -35,22 +31,21 @@ def upload_pdf(
     with open(local_path, "rb") as f:
         file_data = f.read()
 
-    # Upload
+    # Upload to Supabase
     client.storage.from_("clinic-files").upload(
         path=storage_path,
         file=file_data,
         file_options={
-            "content-type": "application/pdf",
-            "upsert": True
+            "content-type": "application/pdf"
         }
     )
 
-    # Public URL
+    # Get public URL
     public_url = client.storage.from_(
         "clinic-files"
     ).get_public_url(storage_path)
 
-    # Delete local temp file
+    # Delete temp local file
     if os.path.exists(local_path):
         os.remove(local_path)
 
