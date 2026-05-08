@@ -4,12 +4,18 @@ from app.config import settings
 
 engine = create_engine(
     settings.DATABASE_URL,
-    pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20
+    pool_pre_ping=True,          # tests connection before using it
+    pool_size=5,                 # reduced for free tier pooler
+    max_overflow=10,
+    pool_recycle=300,            # recycle every 5 min
+    connect_args={
+        "sslmode": "require",    # Supabase pooler requires SSL
+        "connect_timeout": 10,   # fail fast instead of hanging
+    }
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
 
 def get_db():
     db = SessionLocal()
@@ -18,8 +24,8 @@ def get_db():
     finally:
         db.close()
 
+
 def create_tables():
-    # Import all models so SQLAlchemy knows about them
     from app.models.base import Base
     from app.models import clinic, user, patient, visit, billing, reminder
     Base.metadata.create_all(bind=engine)
