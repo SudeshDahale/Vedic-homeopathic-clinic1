@@ -174,7 +174,7 @@ def call_next(db: Session, clinic_id: str) -> dict:
         and_(
             Queue.clinic_id  == clinic_id,
             Queue.queue_date == today,
-            Queue.status     == QueueStatus.IN_PROGRESS
+            Queue.status     == QueueStatus.IN_TREATMENT
         )
     ).first()
 
