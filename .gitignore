@@ -1,6 +1,8 @@
-node_modules/
 .env
-dist/
-*.log
-.DS_Store
-prisma/generated/
+venv/
+.venv/
+__pycache__/
+*.pyc
+receipts/
+prescriptions/
+*.pdf
