@@ -2,12 +2,14 @@ import json
 
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
+from types import SimpleNamespace
 
 from app.models.visit import (
     Visit,
     AllopathyRx,
     HomeopathyCase
 )
+
 from app.models.patient import Patient
 from app.models.clinic import Clinic
 
@@ -29,9 +31,9 @@ def generate_prescription(
     3. Return permanent URL
     """
 
-    # ───────────────────────────────────────────────────
+    # =====================================================
     # Get Visit
-    # ───────────────────────────────────────────────────
+    # =====================================================
     visit = db.query(Visit).filter(
         Visit.id == visit_id,
         Visit.clinic_id == clinic_id
@@ -43,26 +45,26 @@ def generate_prescription(
             detail="Visit not found"
         )
 
-    # ───────────────────────────────────────────────────
+    # =====================================================
     # Get Patient
-    # ───────────────────────────────────────────────────
+    # =====================================================
     patient = db.query(Patient).filter(
         Patient.id == visit.patient_id
     ).first()
 
-    # ───────────────────────────────────────────────────
+    # =====================================================
     # Get Clinic
-    # ───────────────────────────────────────────────────
+    # =====================================================
     clinic = db.query(Clinic).filter(
         Clinic.id == clinic_id
     ).first()
 
-    # ───────────────────────────────────────────────────
-    # Build Medicines List
-    # ───────────────────────────────────────────────────
+    # =====================================================
+    # Build Medicines
+    # =====================================================
     medicines = []
 
-    # Allopathy Prescription
+    # Allopathy
     if visit.allopathy_rx and visit.allopathy_rx.medicines:
         try:
             medicines = json.loads(
@@ -71,8 +73,12 @@ def generate_prescription(
         except Exception:
             medicines = []
 
-    # Homeopathy Prescription
-    if visit.homeopathy_case and visit.homeopathy_case.remedy:
+    # Homeopathy
+    elif (
+        visit.homeopathy_case
+        and visit.homeopathy_case.remedy
+    ):
+
         hc = visit.homeopathy_case
 
         medicines = [{
@@ -86,135 +92,137 @@ def generate_prescription(
             )
         }]
 
-    # ───────────────────────────────────────────────────
-    # Build Prescription Data
-    # ───────────────────────────────────────────────────
-    prescription_data = {
+    # =====================================================
+    # Create OBJECT instead of DICT
+    # =====================================================
+    prescription_data = SimpleNamespace(
 
-        "clinic": {
-            "name": (
-                clinic.name
-                if clinic else "Homoeopathic Clinic"
-            ),
+        # Clinic
+        clinic_name=(
+            clinic.name
+            if clinic else "Homoeopathic Clinic"
+        ),
 
-            "doctor_name": (
-                clinic.doctor_name
-                if clinic else "Doctor"
-            ),
+        doctor_name=(
+            clinic.doctor_name
+            if clinic else "Doctor"
+        ),
 
-            "qualification": (
-                clinic.qualification
-                if clinic else "B.H.M.S."
-            ),
+        qualification=(
+            clinic.qualification
+            if clinic else "B.H.M.S."
+        ),
 
-            "address": (
-                clinic.address
-                if clinic else ""
-            ),
+        clinic_address=(
+            clinic.address
+            if clinic else ""
+        ),
 
-            "phone": (
-                clinic.phone
-                if clinic else ""
-            ),
+        clinic_phone=(
+            clinic.phone
+            if clinic else ""
+        ),
 
-            "timings": (
-                clinic.timings
-                if clinic else ""
-            )
-        },
+        clinic_timings=(
+            clinic.timings
+            if clinic else ""
+        ),
 
-        "patient": {
-            "name": (
-                f"{patient.first_name} "
-                f"{patient.last_name or ''}".strip()
-                if patient else "Patient"
-            ),
+        # Patient
+        patient_name=(
+            f"{patient.first_name} "
+            f"{patient.last_name or ''}".strip()
+            if patient else "Patient"
+        ),
 
-            "age": (
-                patient.age
-                if patient else "-"
-            ),
+        patient_age=(
+            patient.age
+            if patient else "-"
+        ),
 
-            "gender": (
-                patient.gender.value
-                if patient and patient.gender
-                else "-"
-            ),
+        patient_gender=(
+            str(patient.gender)
+            if patient and patient.gender
+            else "-"
+        ),
 
-            "reg_no": (
-                patient.reg_no
-                if patient else 0
-            ),
+        reg_no=(
+            patient.reg_no
+            if patient else 0
+        ),
 
-            "total_visits": (
-                patient.total_visits
-                if patient else 1
-            )
-        },
+        total_visits=(
+            patient.total_visits
+            if patient else 1
+        ),
 
-        "visit": {
-            "date": (
-                visit.visit_date.strftime("%d-%m-%Y")
-                if visit.visit_date else ""
-            ),
+        # Visit
+        visit_date=(
+            visit.visit_date.strftime("%d-%m-%Y")
+            if visit.visit_date else ""
+        ),
 
-            "chief_complaint": (
-                visit.chief_complaint or "-"
-            ),
+        chief_complaint=(
+            visit.chief_complaint or "-"
+        ),
 
-            "type": (
-                visit.type.value
-                if visit.type else ""
-            )
-        },
+        visit_type=(
+            str(visit.type)
+            if visit.type else ""
+        ),
 
-        "prescription": {
-            "medicines": medicines,
+        # Prescription
+        medicines=medicines,
 
-            "advice": (
-                visit.allopathy_rx.advice
-                if visit.allopathy_rx
-                else None
-            ),
+        advice=(
+            visit.allopathy_rx.advice
+            if visit.allopathy_rx
+            else None
+        ),
 
-            "next_visit_date": (
-                str(visit.allopathy_rx.next_visit_date)
-                if visit.allopathy_rx
+        next_visit_date=(
+            str(visit.allopathy_rx.next_visit_date)
+            if (
+                visit.allopathy_rx
                 and visit.allopathy_rx.next_visit_date
-                else None
             )
-        }
-    }
+            else None
+        )
+    )
 
-    # ───────────────────────────────────────────────────
+    # =====================================================
     # STEP 1:
-    # Generate PDF in /tmp/
-    # ───────────────────────────────────────────────────
+    # Generate PDF
+    # =====================================================
     pdf_path = generate_prescription_pdf(
         prescription_data
     )
 
-    # ───────────────────────────────────────────────────
+    # =====================================================
     # STEP 2:
-    # Upload to Supabase Storage
-    # ───────────────────────────────────────────────────
+    # Upload PDF
+    # =====================================================
     pdf_url = upload_pdf(
         pdf_path,
         folder="prescriptions"
     )
 
-    # ───────────────────────────────────────────────────
+    # =====================================================
     # STEP 3:
-    # Return permanent URL
-    # ───────────────────────────────────────────────────
+    # Return Response
+    # =====================================================
     return {
         "pdf_url": pdf_url,
         "visit_id": visit_id,
-        "patient": prescription_data["patient"]["name"],
-        "visit_type": (
-            visit.type.value
-            if visit.type else ""
+
+        "patient": (
+            prescription_data.patient_name
         ),
+
+        "visit_type": (
+            prescription_data.visit_type
+        ),
+
         "message": (
             "Prescription generated successfully"
         )
