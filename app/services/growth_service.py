@@ -121,7 +121,6 @@ def schedule_followups(
             type=ftype,
             channel=followup_channel,
 
-            is_sent=False
         )
 
         db.add(followup)
