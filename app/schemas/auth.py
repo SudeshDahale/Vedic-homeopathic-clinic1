@@ -1,36 +1,63 @@
-from pydantic import BaseModel
+# =====================================================
+# FILE: app/schemas/auth.py
+# =====================================================
+
+from pydantic import BaseModel, EmailStr
 from typing import Optional
 
+
 class RegisterRequest(BaseModel):
-    """Data needed to create a new Doctor or Receptionist account"""
-    name:       str
-    phone:      str
-    email:      Optional[str] = None
-    password:   str
-    role:       str = "RECEPTIONIST"   # DOCTOR or RECEPTIONIST
-    clinic_id:  str
+    """
+    Create Doctor or Receptionist account
+    (used internally after clinic signup)
+    """
+    name: str
+    phone: str
+    email: Optional[EmailStr] = None
+    password: str
+    role: str = "RECEPTIONIST"
+    clinic_id: str
+
+
+class SignupRequest(BaseModel):
+    """
+    Public clinic signup
+    Creates clinic + doctor account together
+    """
+    clinic_name: str
+    doctor_name: str
+    qualification: Optional[str] = "B.H.M.S."
+    email: EmailStr
+    phone: str
+    password: str
+    city: Optional[str] = None
+    timings: Optional[str] = None
+
 
 class LoginRequest(BaseModel):
-    """Login with phone + password"""
-    phone:    str
+    """
+    Login with email OR phone
+    """
+    login: str
     password: str
 
+
 class LoginResponse(BaseModel):
-    """What we send back after successful login"""
     access_token: str
-    token_type:   str = "bearer"
-    role:         str
-    name:         str
-    clinic_id:    str
-    user_id:      str
+    token_type: str = "bearer"
+    role: str
+    name: str
+    clinic_id: str
+    clinic_name: Optional[str] = ""
+    user_id: str
+
 
 class UserResponse(BaseModel):
-    """Current logged-in user info"""
-    id:        str
-    name:      str
-    phone:     str
-    email:     Optional[str]
-    role:      str
+    id: str
+    name: str
+    phone: str
+    email: Optional[str]
+    role: str
     clinic_id: str
     is_active: bool
 
