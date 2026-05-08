@@ -2,18 +2,16 @@ import json
 
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from types import SimpleNamespace
 
-from app.models.visit import (
-    Visit,
-    AllopathyRx,
-    HomeopathyCase
-)
-
+from app.models.visit import Visit
 from app.models.patient import Patient
 from app.models.clinic import Clinic
 
-from app.services.pdf_service import generate_prescription_pdf
+from app.services.pdf_service import (
+    generate_prescription_pdf,
+    PrescriptionData
+)
+
 from app.utils.storage import upload_pdf
 
 
@@ -22,14 +20,6 @@ def generate_prescription(
     visit_id: str,
     clinic_id: str
 ) -> dict:
-    """
-    Generate prescription PDF for any visit type.
-
-    Railway-safe flow:
-    1. Generate PDF in /tmp/
-    2. Upload to Supabase Storage
-    3. Return permanent URL
-    """
 
     # =====================================================
     # Get Visit
@@ -52,6 +42,12 @@ def generate_prescription(
         Patient.id == visit.patient_id
     ).first()
 
+    if not patient:
+        raise HTTPException(
+            status_code=404,
+            detail="Patient not found"
+        )
+
     # =====================================================
     # Get Clinic
     # =====================================================
@@ -60,47 +56,52 @@ def generate_prescription(
     ).first()
 
     # =====================================================
-    # Build Medicines
+    # Detect Visit Type
+    # =====================================================
+    visit_type = str(visit.type).upper() if visit.type else "HOMEOPATHY"
+
+    # =====================================================
+    # Build Medicine Data
     # =====================================================
     medicines = []
 
-    # Allopathy
-    if visit.allopathy_rx and visit.allopathy_rx.medicines:
-        try:
-            medicines = json.loads(
-                visit.allopathy_rx.medicines
-            )
-        except Exception:
-            medicines = []
+    remedy = ""
+    potency = ""
+    repetition = ""
 
+    # -------------------------
+    # Allopathy
+    # -------------------------
+    if visit.allopathy_rx:
+
+        rx = visit.allopathy_rx
+
+        if rx.medicines:
+            try:
+                medicines = json.loads(rx.medicines)
+            except Exception:
+                medicines = []
+
+    # -------------------------
     # Homeopathy
-    elif (
-        visit.homeopathy_case
-        and visit.homeopathy_case.remedy
-    ):
+    # -------------------------
+    if visit.homeopathy_case:
 
         hc = visit.homeopathy_case
 
-        medicines = [{
-            "name": hc.remedy,
-            "dosage": hc.potency or "-",
-            "frequency": hc.repetition or "-",
-            "duration": "As advised",
-            "instructions": (
-                f"Miasm: {hc.miasm}"
-                if hc.miasm else ""
-            )
-        }]
+        remedy = hc.remedy or ""
+        potency = hc.potency or ""
+        repetition = hc.repetition or ""
 
     # =====================================================
-    # Create OBJECT instead of DICT
+    # Build Proper PrescriptionData Object
     # =====================================================
-    prescription_data = SimpleNamespace(
+    prescription_data = PrescriptionData(
 
         # Clinic
         clinic_name=(
             clinic.name
-            if clinic else "Homoeopathic Clinic"
+            if clinic else "Vedic Homoeopathic Clinic"
         ),
 
         doctor_name=(
@@ -111,6 +112,12 @@ def generate_prescription(
         qualification=(
             clinic.qualification
             if clinic else "B.H.M.S."
+        ),
+
+        reg_number=(
+            clinic.registration_number
+            if clinic and hasattr(clinic, "registration_number")
+            else ""
         ),
 
         clinic_address=(
@@ -131,29 +138,20 @@ def generate_prescription(
         # Patient
         patient_name=(
             f"{patient.first_name} "
-            f"{patient.last_name or ''}".strip()
-            if patient else "Patient"
-        ),
+            f"{patient.last_name or ''}"
+        ).strip(),
 
-        patient_age=(
-            patient.age
-            if patient else "-"
-        ),
+        patient_age=patient.age,
 
         patient_gender=(
             str(patient.gender)
-            if patient and patient.gender
-            else "-"
+            if patient.gender else ""
         ),
 
-        reg_no=(
+        patient_reg_no=(
             patient.reg_no
-            if patient else 0
-        ),
-
-        total_visits=(
-            patient.total_visits
-            if patient else 1
+            if hasattr(patient, "reg_no")
+            else ""
         ),
 
         # Visit
@@ -162,45 +160,51 @@ def generate_prescription(
             if visit.visit_date else ""
         ),
 
+        visit_number=(
+            patient.total_visits
+            if patient.total_visits else 1
+        ),
+
         chief_complaint=(
-            visit.chief_complaint or "-"
+            visit.chief_complaint or ""
         ),
 
-        visit_type=(
-            str(visit.type)
-            if visit.type else ""
-        ),
+        visit_type=visit_type,
 
-        # Prescription
+        # Homeopathy
+        remedy=remedy,
+        potency=potency,
+        repetition=repetition,
+
+        # Allopathy
         medicines=medicines,
 
+        # Advice
         advice=(
             visit.allopathy_rx.advice
             if visit.allopathy_rx
-            else None
+            else ""
         ),
 
-        next_visit_date=(
+        follow_up_date=(
             str(visit.allopathy_rx.next_visit_date)
             if (
                 visit.allopathy_rx
                 and visit.allopathy_rx.next_visit_date
             )
-            else None
+            else ""
         )
     )
 
     # =====================================================
-    # STEP 1:
-    # Generate PDF
+    # STEP 1: Generate PDF
     # =====================================================
     pdf_path = generate_prescription_pdf(
         prescription_data
     )
 
     # =====================================================
-    # STEP 2:
-    # Upload PDF
+    # STEP 2: Upload to Supabase
     # =====================================================
     pdf_url = upload_pdf(
         pdf_path,
@@ -208,22 +212,16 @@ def generate_prescription(
     )
 
     # =====================================================
-    # STEP 3:
-    # Return Response
+    # STEP 3: Return Response
     # =====================================================
     return {
+        "message": "Prescription generated successfully",
+
         "pdf_url": pdf_url,
+
         "visit_id": visit_id,
 
-        "patient": (
-            prescription_data.patient_name
-        ),
+        "patient": prescription_data.patient_name,
 
-        "visit_type": (
-            prescription_data.visit_type
-        ),
-
-        "message": (
-            "Prescription generated successfully"
-        )
+        "visit_type": prescription_data.visit_type
     }
