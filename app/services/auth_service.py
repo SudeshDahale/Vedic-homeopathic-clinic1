@@ -2,18 +2,22 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from fastapi import HTTPException
 from datetime import datetime, timedelta
+
 from app.models.user import User
 from app.models.clinic import Clinic
+
 from app.schemas.auth import (
     SignupRequest,
     LoginRequest,
     CreateStaffRequest
 )
+
 from app.utils.security import (
     hash_password,
     verify_password,
     create_access_token
 )
+
 from app.enums import (
     UserRole,
     SubscriptionPlan,
@@ -66,10 +70,16 @@ def signup_clinic(db: Session, data: SignupRequest) -> dict:
         timings=data.timings,
 
         # Subscription
-        plan_id=SubscriptionPlan.STARTER,
-        subscription_status=SubscriptionStatus.TRIAL,
+        plan_id=SubscriptionPlan.STARTER.value,
+        subscription_status=SubscriptionStatus.TRIAL.value,
         trial_end_date=trial_end,
-        staff_limit=2
+        staff_limit=2,
+
+        # Branding defaults
+        branding_enabled=False,
+        primary_color="#16a34a",
+        secondary_color="#2563eb",
+        is_active=True
     )
 
     db.add(clinic)
@@ -81,7 +91,7 @@ def signup_clinic(db: Session, data: SignupRequest) -> dict:
         phone=data.phone,
         email=data.email,
 
-        # FIXED FIELD
+        # SECURE PASSWORD
         hashed_password=hash_password(data.password),
 
         role=UserRole.DOCTOR
@@ -92,7 +102,7 @@ def signup_clinic(db: Session, data: SignupRequest) -> dict:
     db.commit()
     db.refresh(user)
 
-    # Create JWT token
+    # JWT token
     token = create_access_token({
         "user_id": user.id,
         "clinic_id": clinic_id,
@@ -129,7 +139,7 @@ def login_user(db: Session, data: LoginRequest) -> dict:
         )
     ).first()
 
-    # FIXED FIELD
+    # Verify password
     if not user or not verify_password(
         data.password,
         user.hashed_password
@@ -152,8 +162,9 @@ def login_user(db: Session, data: LoginRequest) -> dict:
 
     clinic_name = clinic.name if clinic else "Clinic"
 
+    # FIXED PLAN LOGIC
     plan = (
-        clinic.plan_id.value
+        clinic.plan_id
         if clinic and clinic.plan_id
         else SubscriptionPlan.STARTER.value
     )
@@ -241,10 +252,7 @@ def create_staff_account(
         name=data.name,
         phone=data.phone,
         email=data.email,
-
-        # FIXED FIELD
         hashed_password=hash_password(data.password),
-
         role=data.role
     )
 
