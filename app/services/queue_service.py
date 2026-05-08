@@ -56,9 +56,6 @@ def add_to_queue(
     clinic_id: str
 ) -> dict:
 
-    # -----------------------------------------
-    # Check patient exists
-    # -----------------------------------------
     patient = db.query(Patient).filter(
         Patient.id == data.patient_id
     ).first()
@@ -71,17 +68,14 @@ def add_to_queue(
 
     today = now_ist().date()
 
-    # -----------------------------------------
-    # Prevent duplicate active queue entries
-    # -----------------------------------------
     existing = db.query(Queue).filter(
         and_(
             Queue.clinic_id == clinic_id,
             Queue.patient_id == data.patient_id,
             Queue.queue_date == today,
             Queue.status.in_([
-                QueueStatus.WAITING,
-                QueueStatus.IN_TREATMENT
+                "WAITING",
+                "IN_TREATMENT"
             ])
         )
     ).first()
@@ -92,17 +86,11 @@ def add_to_queue(
             detail=f"Patient already in queue. Token: {existing.token_number}"
         )
 
-    # -----------------------------------------
-    # Generate token
-    # -----------------------------------------
     token = get_next_token(
         db,
         clinic_id
     )
 
-    # -----------------------------------------
-    # Create queue entry
-    # -----------------------------------------
     entry = Queue(
         clinic_id=clinic_id,
         patient_id=data.patient_id,
@@ -111,15 +99,15 @@ def add_to_queue(
         queue_date=today,
 
         visit_type=(
-            VisitTypeQueue.WALKIN
+            "WALKIN"
             if data.visit_type == "WALKIN"
-            else VisitTypeQueue.APPOINTMENT
+            else "APPOINTMENT"
         ),
 
         priority=data.priority or 0,
         notes=data.notes,
 
-        status=QueueStatus.WAITING,
+        status="WAITING",
 
         check_in_time=now_ist()
     )
@@ -132,7 +120,9 @@ def add_to_queue(
 
     return {
         "message": "Added to queue",
+
         "queue_id": entry.id,
+
         "token_number": token,
 
         "patient_name": (
@@ -140,7 +130,7 @@ def add_to_queue(
             f"{patient.last_name or ''}"
         ).strip(),
 
-        "status": entry.status.value,
+        "status": str(entry.status),
 
         "position": _get_position(
             db,
@@ -182,7 +172,7 @@ def get_todays_queue(
 
         if (
             e.check_in_time
-            and e.status == QueueStatus.WAITING
+            and str(e.status) == "WAITING"
         ):
 
             diff = (
@@ -211,10 +201,10 @@ def get_todays_queue(
                 if patient else None
             ),
 
-            "status": e.status.value,
+            "status": str(e.status),
 
             "visit_type": (
-                e.visit_type.value
+                str(e.visit_type)
                 if e.visit_type else "WALKIN"
             ),
 
@@ -252,7 +242,7 @@ def get_current_patient(
         and_(
             Queue.clinic_id == clinic_id,
             Queue.queue_date == today,
-            Queue.status == QueueStatus.IN_TREATMENT
+            Queue.status == "IN_TREATMENT"
         )
     ).first()
 
@@ -299,27 +289,25 @@ def call_next(
 
     today = now_ist().date()
 
-    # Complete existing active patient
     current = db.query(Queue).filter(
         and_(
             Queue.clinic_id == clinic_id,
             Queue.queue_date == today,
-            Queue.status == QueueStatus.IN_TREATMENT
+            Queue.status == "IN_TREATMENT"
         )
     ).first()
 
     if current:
-        current.status = QueueStatus.COMPLETED
+        current.status = "COMPLETED"
         current.end_time = now_ist()
 
         db.commit()
 
-    # Next waiting patient
     next_patient = db.query(Queue).filter(
         and_(
             Queue.clinic_id == clinic_id,
             Queue.queue_date == today,
-            Queue.status == QueueStatus.WAITING
+            Queue.status == "WAITING"
         )
     ).order_by(
         Queue.priority.desc(),
@@ -331,7 +319,7 @@ def call_next(
             "message": "No patients waiting"
         }
 
-    next_patient.status = QueueStatus.IN_TREATMENT
+    next_patient.status = "IN_TREATMENT"
 
     next_patient.called_time = now_ist()
     next_patient.start_time = now_ist()
@@ -373,7 +361,7 @@ def mark_no_show(
         clinic_id
     )
 
-    entry.status = QueueStatus.NO_SHOW
+    entry.status = "NO_SHOW"
 
     db.commit()
 
@@ -426,22 +414,22 @@ def get_queue_stats(
 
     waiting = len([
         e for e in entries
-        if e.status == QueueStatus.WAITING
+        if str(e.status) == "WAITING"
     ])
 
     in_treatment = len([
         e for e in entries
-        if e.status == QueueStatus.IN_TREATMENT
+        if str(e.status) == "IN_TREATMENT"
     ])
 
     completed = len([
         e for e in entries
-        if e.status == QueueStatus.COMPLETED
+        if str(e.status) == "COMPLETED"
     ])
 
     no_show = len([
         e for e in entries
-        if e.status == QueueStatus.NO_SHOW
+        if str(e.status) == "NO_SHOW"
     ])
 
     return {
@@ -496,7 +484,7 @@ def _get_position(
         and_(
             Queue.clinic_id == clinic_id,
             Queue.queue_date == today,
-            Queue.status == QueueStatus.WAITING,
+            Queue.status == "WAITING",
             Queue.token_number <= token
         )
     ).scalar()
