@@ -1,46 +1,130 @@
-import json
-import tempfile
+from fastapi import APIRouter, Depends, HTTPException
+
+from fastapi.responses import RedirectResponse
 
 from sqlalchemy.orm import Session
 
-from fastapi import HTTPException
+from app.database import get_db
 
-from app.models.visit import Visit
+from app.services.prescription_service import (
+    generate_prescription
+)
+
+from app.services.whatsapp_service import (
+    send_text_message
+)
+
+from app.middleware.auth_middleware import (
+    doctor_only
+)
+
+from app.models.user import User
 
 from app.models.patient import Patient
 
 from app.models.clinic import Clinic
 
-from app.services.pdf_service import (
-    generate_prescription_pdf
-)
+from app.models.visit import Visit
 
-from app.utils.storage import upload_pdf
+
+# =====================================================
+# ROUTER
+# =====================================================
+
+router = APIRouter(
+
+    prefix="/prescriptions",
+
+    tags=["Prescriptions"]
+)
 
 
 # =====================================================
 # GENERATE PRESCRIPTION
 # =====================================================
 
-def generate_prescription(
-    db: Session,
+@router.post("/generate/{visit_id}")
+def create_prescription(
     visit_id: str,
-    clinic_id: str
-) -> dict:
-    """
-    Generate prescription PDF
-    and upload to storage.
-    """
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        doctor_only
+    )
+):
 
-    # =================================================
-    # GET VISIT
-    # =================================================
+    return generate_prescription(
+
+        db,
+
+        visit_id,
+
+        current_user.clinic_id
+    )
+
+
+# =====================================================
+# DOWNLOAD PRESCRIPTION
+# =====================================================
+
+@router.get("/download/{visit_id}")
+def download_prescription(
+    visit_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        doctor_only
+    )
+):
+
+    result = generate_prescription(
+
+        db,
+
+        visit_id,
+
+        current_user.clinic_id
+    )
+
+    pdf_url = result.get("pdf_url")
+
+    if not pdf_url:
+
+        raise HTTPException(
+
+            status_code=404,
+
+            detail="Prescription file not found"
+        )
+
+    return RedirectResponse(
+        url=pdf_url
+    )
+
+
+# =====================================================
+# SEND PRESCRIPTION WHATSAPP
+# =====================================================
+
+@router.post("/send/{visit_id}")
+async def send_prescription_whatsapp(
+    visit_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        doctor_only
+    )
+):
+
+    result = generate_prescription(
+
+        db,
+
+        visit_id,
+
+        current_user.clinic_id
+    )
 
     visit = db.query(Visit).filter(
 
-        Visit.id == visit_id,
-
-        Visit.clinic_id == clinic_id
+        Visit.id == visit_id
 
     ).first()
 
@@ -53,312 +137,104 @@ def generate_prescription(
             detail="Visit not found"
         )
 
-    # =================================================
-    # GET PATIENT
-    # =================================================
-
     patient = db.query(Patient).filter(
 
         Patient.id == visit.patient_id
 
     ).first()
 
-    if not patient:
-
-        raise HTTPException(
-
-            status_code=404,
-
-            detail="Patient not found"
-        )
-
-    # =================================================
-    # GET CLINIC
-    # =================================================
-
     clinic = db.query(Clinic).filter(
 
-        Clinic.id == clinic_id
+        Clinic.id == current_user.clinic_id
 
     ).first()
 
-    # =================================================
-    # DETECT VISIT TYPE
-    # =================================================
+    whatsapp_result = None
 
-    visit_type = (
+    if patient and getattr(
+        patient,
+        "phone_mobile",
+        None
+    ):
 
-        str(visit.type).upper()
+        clinic_name = (
 
-        if visit.type
+            clinic.name
 
-        else "HOMEOPATHY"
-    )
+            if clinic
 
-    # =================================================
-    # BUILD RX / NOTES
-    # =================================================
-
-    rx_notes = ""
-
-    # -------------------------------------------------
-    # ALLOPATHY
-    # -------------------------------------------------
-
-    if visit.allopathy_rx:
-
-        rx = visit.allopathy_rx
-
-        medicines = []
-
-        if rx.medicines:
-
-            try:
-
-                medicines = json.loads(
-                    rx.medicines
-                )
-
-            except Exception:
-
-                medicines = []
-
-        for med in medicines:
-
-            rx_notes += (
-
-                f"• {med.get('name', '')} | "
-
-                f"{med.get('dosage', '')} | "
-
-                f"{med.get('frequency', '')} | "
-
-                f"{med.get('duration', '')}\n"
-            )
-
-        if rx.advice:
-
-            rx_notes += (
-
-                f"\nAdvice: "
-
-                f"{rx.advice}\n"
-            )
-
-    # -------------------------------------------------
-    # HOMEOPATHY
-    # -------------------------------------------------
-
-    elif visit.homeopathy_case:
-
-        hc = visit.homeopathy_case
-
-        rx_notes += (
-
-            f"Remedy: "
-
-            f"{hc.remedy or ''}\n"
+            else "Clinic"
         )
 
-        rx_notes += (
+        doctor_name = (
 
-            f"Potency: "
+            clinic.doctor_name
 
-            f"{hc.potency or ''}\n"
+            if clinic
+
+            else "Doctor"
         )
 
-        rx_notes += (
+        clinic_phone = (
 
-            f"Repetition: "
+            clinic.phone
 
-            f"{hc.repetition or ''}\n"
+            if clinic
+
+            else ""
         )
 
-        if hc.miasm:
+        patient_name = (
 
-            rx_notes += (
+            patient.first_name
 
-                f"Miasm: "
-
-                f"{hc.miasm}\n"
-            )
-
-    # =================================================
-    # BUILD VISIT DICT
-    # =================================================
-
-    visit_dict = {
-
-        "id":
-            visit.id,
-
-        "rx":
-            rx_notes,
-
-        "notes":
-            visit.notes,
-
-        "chief_complaint":
-            visit.chief_complaint,
-
-        "visit_type":
-            visit_type
-    }
-
-    # =================================================
-    # BUILD CLINIC DICT
-    # =================================================
-
-    clinic_dict = {}
-
-    if clinic:
-
-        clinic_dict = {
-
-            "name":
-                clinic.name,
-
-            "doctor_name":
-                clinic.doctor_name,
-
-            "qualification":
-                clinic.qualification,
-
-            "address":
-                clinic.address,
-
-            "phone":
-                clinic.phone,
-
-            "timings":
-                clinic.timings,
-
-            "logo_url":
-                getattr(
-                    clinic,
-                    "logo_url",
-                    None
-                ),
-
-            "signature_url":
-                getattr(
-                    clinic,
-                    "signature_url",
-                    None
-                ),
-
-            "reg_number":
-                getattr(
-                    clinic,
-                    "registration_number",
-                    ""
-                )
-        }
-
-    # =================================================
-    # BUILD PATIENT DICT
-    # =================================================
-
-    patient_dict = {
-
-        "name":
-            (
-                f"{getattr(patient, 'first_name', '')} "
-                f"{getattr(patient, 'last_name', '') or ''}"
-            ).strip(),
-
-        "age":
-            getattr(
+            if getattr(
                 patient,
-                "age",
-                ""
-            ),
-
-        "gender":
-            (
-                str(patient.gender)
-                if getattr(
-                    patient,
-                    "gender",
-                    None
-                )
-                else ""
-            ),
-
-        "reg_no":
-            getattr(
-                patient,
-                "reg_no",
-                ""
+                "first_name",
+                None
             )
-    }
 
-    # =================================================
-    # BUILD DOCTOR DICT
-    # =================================================
+            else "Patient"
+        )
 
-    doctor_dict = {
+        message = (
 
-        "name":
-            (
-                clinic.doctor_name
-                if clinic
-                else "Doctor"
-            ),
+            f"Dear {patient_name}, "
 
-        "qualification":
-            (
-                clinic.qualification
-                if clinic
-                else "B.H.M.S."
+            f"your prescription from "
+
+            f"{clinic_name} is ready.\n\n"
+
+            f"Doctor: Dr. {doctor_name}\n\n"
+
+            f"Prescription PDF:\n"
+
+            f"{result['pdf_url']}\n\n"
+
+            f"For assistance call:\n"
+
+            f"{clinic_phone}\n\n"
+
+            f"- Powered by Vennova"
+        )
+
+        try:
+
+            whatsapp_result = await send_text_message(
+
+                patient.phone_mobile,
+
+                message
             )
-    }
 
-    # =================================================
-    # GENERATE PDF BYTES
-    # =================================================
+        except Exception as e:
 
-    pdf_bytes = generate_prescription_pdf(
+            whatsapp_result = {
 
-        visit=visit_dict,
+                "success": False,
 
-        clinic=clinic_dict,
-
-        doctor=doctor_dict,
-
-        patient=patient_dict
-    )
-
-    # =================================================
-    # SAVE TEMP FILE
-    # =================================================
-
-    with tempfile.NamedTemporaryFile(
-
-        delete=False,
-
-        suffix=".pdf"
-
-    ) as temp_pdf:
-
-        temp_pdf.write(pdf_bytes)
-
-        pdf_path = temp_pdf.name
-
-    # =================================================
-    # UPLOAD TO STORAGE
-    # =================================================
-
-    pdf_url = upload_pdf(
-
-        pdf_path,
-
-        folder="prescriptions"
-    )
-
-    # =================================================
-    # RESPONSE
-    # =================================================
+                "error": str(e)
+            }
 
     return {
 
@@ -366,14 +242,14 @@ def generate_prescription(
             "Prescription generated successfully",
 
         "pdf_url":
-            pdf_url,
-
-        "visit_id":
-            visit_id,
+            result.get("pdf_url"),
 
         "patient":
-            patient_dict["name"],
+            result.get("patient"),
 
         "visit_type":
-            visit_type
+            result.get("visit_type"),
+
+        "whatsapp":
+            whatsapp_result
     }
