@@ -1,19 +1,26 @@
 import json
+import tempfile
 
 from sqlalchemy.orm import Session
+
 from fastapi import HTTPException
 
 from app.models.visit import Visit
+
 from app.models.patient import Patient
+
 from app.models.clinic import Clinic
 
 from app.services.pdf_service import (
-    generate_prescription_pdf,
-    PrescriptionData
+    generate_prescription_pdf
 )
 
 from app.utils.storage import upload_pdf
 
+
+# =====================================================
+# GENERATE PRESCRIPTION
+# =====================================================
 
 def generate_prescription(
     db: Session,
@@ -21,207 +28,322 @@ def generate_prescription(
     clinic_id: str
 ) -> dict:
 
-    # =====================================================
-    # Get Visit
-    # =====================================================
+    # =================================================
+    # GET VISIT
+    # =================================================
+
     visit = db.query(Visit).filter(
+
         Visit.id == visit_id,
+
         Visit.clinic_id == clinic_id
+
     ).first()
 
     if not visit:
+
         raise HTTPException(
+
             status_code=404,
+
             detail="Visit not found"
         )
 
-    # =====================================================
-    # Get Patient
-    # =====================================================
+    # =================================================
+    # GET PATIENT
+    # =================================================
+
     patient = db.query(Patient).filter(
+
         Patient.id == visit.patient_id
+
     ).first()
 
     if not patient:
+
         raise HTTPException(
+
             status_code=404,
+
             detail="Patient not found"
         )
 
-    # =====================================================
-    # Get Clinic
-    # =====================================================
+    # =================================================
+    # GET CLINIC
+    # =================================================
+
     clinic = db.query(Clinic).filter(
+
         Clinic.id == clinic_id
+
     ).first()
 
-    # =====================================================
-    # Detect Visit Type
-    # =====================================================
-    visit_type = str(visit.type).upper() if visit.type else "HOMEOPATHY"
+    # =================================================
+    # DETECT VISIT TYPE
+    # =================================================
 
-    # =====================================================
-    # Build Medicine Data
-    # =====================================================
-    medicines = []
+    visit_type = (
 
-    remedy = ""
-    potency = ""
-    repetition = ""
+        str(visit.type).upper()
 
-    # -------------------------
-    # Allopathy
-    # -------------------------
+        if visit.type
+
+        else "HOMEOPATHY"
+    )
+
+    # =================================================
+    # BUILD RX / NOTES
+    # =================================================
+
+    rx_notes = ""
+
+    # -------------------------------------------------
+    # ALLOPATHY
+    # -------------------------------------------------
+
     if visit.allopathy_rx:
 
         rx = visit.allopathy_rx
 
+        medicines = []
+
         if rx.medicines:
+
             try:
-                medicines = json.loads(rx.medicines)
+
+                medicines = json.loads(
+                    rx.medicines
+                )
+
             except Exception:
+
                 medicines = []
 
-    # -------------------------
-    # Homeopathy
-    # -------------------------
-    if visit.homeopathy_case:
+        for med in medicines:
+
+            rx_notes += (
+                f"• {med.get('name', '')} | "
+                f"{med.get('dosage', '')} | "
+                f"{med.get('frequency', '')} | "
+                f"{med.get('duration', '')}\n"
+            )
+
+        if rx.advice:
+
+            rx_notes += (
+                f"\nAdvice: {rx.advice}\n"
+            )
+
+    # -------------------------------------------------
+    # HOMEOPATHY
+    # -------------------------------------------------
+
+    elif visit.homeopathy_case:
 
         hc = visit.homeopathy_case
 
-        remedy = hc.remedy or ""
-        potency = hc.potency or ""
-        repetition = hc.repetition or ""
-
-    # =====================================================
-    # Build Proper PrescriptionData Object
-    # =====================================================
-    prescription_data = PrescriptionData(
-
-        # Clinic
-        clinic_name=(
-            clinic.name
-            if clinic else "Vedic Homoeopathic Clinic"
-        ),
-
-        doctor_name=(
-            clinic.doctor_name
-            if clinic else "Doctor"
-        ),
-
-        qualification=(
-            clinic.qualification
-            if clinic else "B.H.M.S."
-        ),
-
-        reg_number=(
-            clinic.registration_number
-            if clinic and hasattr(clinic, "registration_number")
-            else ""
-        ),
-
-        clinic_address=(
-            clinic.address
-            if clinic else ""
-        ),
-
-        clinic_phone=(
-            clinic.phone
-            if clinic else ""
-        ),
-
-        clinic_timings=(
-            clinic.timings
-            if clinic else ""
-        ),
-
-        # Patient
-        patient_name=(
-            f"{patient.first_name} "
-            f"{patient.last_name or ''}"
-        ).strip(),
-
-        patient_age=patient.age,
-
-        patient_gender=(
-            str(patient.gender)
-            if patient.gender else ""
-        ),
-
-        patient_reg_no=(
-            patient.reg_no
-            if hasattr(patient, "reg_no")
-            else ""
-        ),
-
-        # Visit
-        visit_date=(
-            visit.visit_date.strftime("%d-%m-%Y")
-            if visit.visit_date else ""
-        ),
-
-        visit_number=(
-            patient.total_visits
-            if patient.total_visits else 1
-        ),
-
-        chief_complaint=(
-            visit.chief_complaint or ""
-        ),
-
-        visit_type=visit_type,
-
-        # Homeopathy
-        remedy=remedy,
-        potency=potency,
-        repetition=repetition,
-
-        # Allopathy
-        medicines=medicines,
-
-        # Advice
-        advice=(
-            visit.allopathy_rx.advice
-            if visit.allopathy_rx
-            else ""
-        ),
-
-        follow_up_date=(
-            str(visit.allopathy_rx.next_visit_date)
-            if (
-                visit.allopathy_rx
-                and visit.allopathy_rx.next_visit_date
-            )
-            else ""
+        rx_notes += (
+            f"Remedy: {hc.remedy or ''}\n"
         )
+
+        rx_notes += (
+            f"Potency: {hc.potency or ''}\n"
+        )
+
+        rx_notes += (
+            f"Repetition: "
+            f"{hc.repetition or ''}\n"
+        )
+
+        if hc.miasm:
+
+            rx_notes += (
+                f"Miasm: {hc.miasm}\n"
+            )
+
+    # =================================================
+    # BUILD VISIT DICT
+    # =================================================
+
+    visit_dict = {
+
+        "id":
+            visit.id,
+
+        "rx":
+            rx_notes,
+
+        "notes":
+            visit.notes,
+
+        "chief_complaint":
+            visit.chief_complaint,
+
+        "visit_type":
+            visit_type
+    }
+
+    # =================================================
+    # BUILD CLINIC DICT
+    # =================================================
+
+    clinic_dict = {}
+
+    if clinic:
+
+        clinic_dict = {
+
+            "name":
+                clinic.name,
+
+            "doctor_name":
+                clinic.doctor_name,
+
+            "qualification":
+                clinic.qualification,
+
+            "address":
+                clinic.address,
+
+            "phone":
+                clinic.phone,
+
+            "timings":
+                clinic.timings,
+
+            "logo_url":
+                getattr(
+                    clinic,
+                    "logo_url",
+                    None
+                ),
+
+            "signature_url":
+                getattr(
+                    clinic,
+                    "signature_url",
+                    None
+                ),
+
+            "reg_number":
+                getattr(
+                    clinic,
+                    "registration_number",
+                    ""
+                )
+        }
+
+    # =================================================
+    # BUILD PATIENT DICT
+    # =================================================
+
+    patient_dict = {
+
+        "name":
+            (
+                f"{patient.first_name} "
+                f"{patient.last_name or ''}"
+            ).strip(),
+
+        "age":
+            patient.age,
+
+        "gender":
+            (
+                str(patient.gender)
+                if patient.gender
+                else ""
+            ),
+
+        "reg_no":
+            (
+                patient.reg_no
+                if hasattr(patient, "reg_no")
+                else ""
+            )
+    }
+
+    # =================================================
+    # BUILD DOCTOR DICT
+    # =================================================
+
+    doctor_dict = {
+
+        "name":
+            (
+                clinic.doctor_name
+                if clinic
+                else "Doctor"
+            ),
+
+        "qualification":
+            (
+                clinic.qualification
+                if clinic
+                else "B.H.M.S."
+            )
+    }
+
+    # =================================================
+    # GENERATE PDF BYTES
+    # =================================================
+
+    pdf_bytes = generate_prescription_pdf(
+
+        visit=visit_dict,
+
+        clinic=clinic_dict,
+
+        doctor=doctor_dict,
+
+        patient=patient_dict
     )
 
-    # =====================================================
-    # STEP 1: Generate PDF
-    # =====================================================
-    pdf_path = generate_prescription_pdf(
-        prescription_data
-    )
+    # =================================================
+    # SAVE TEMP PDF
+    # =================================================
 
-    # =====================================================
-    # STEP 2: Upload to Supabase
-    # =====================================================
+    with tempfile.NamedTemporaryFile(
+
+        delete=False,
+
+        suffix=".pdf"
+
+    ) as temp_pdf:
+
+        temp_pdf.write(pdf_bytes)
+
+        pdf_path = temp_pdf.name
+
+    # =================================================
+    # UPLOAD TO STORAGE
+    # =================================================
+
     pdf_url = upload_pdf(
+
         pdf_path,
+
         folder="prescriptions"
     )
 
-    # =====================================================
-    # STEP 3: Return Response
-    # =====================================================
+    # =================================================
+    # RESPONSE
+    # =================================================
+
     return {
-        "message": "Prescription generated successfully",
 
-        "pdf_url": pdf_url,
+        "message":
+            "Prescription generated successfully",
 
-        "visit_id": visit_id,
+        "pdf_url":
+            pdf_url,
 
-        "patient": prescription_data.patient_name,
+        "visit_id":
+            visit_id,
 
-        "visit_type": prescription_data.visit_type
-    }
+        "patient":
+            patient_dict["name"],
+
+        "visit_type":
+            visit_type
+    } 

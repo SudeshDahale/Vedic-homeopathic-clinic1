@@ -38,6 +38,103 @@ IST = pytz.timezone("Asia/Kolkata")
 
 
 # =====================================================
+# DYNAMIC CONSULTATION SCHEMA
+# =====================================================
+
+CLINIC_FIELDS = {
+
+    # -------------------------------------------------
+    # HOMEOPATHY
+    # -------------------------------------------------
+
+    "HOMEOPATHY": [
+
+        "chief_complaint",
+
+        "miasm",
+
+        "constitution",
+
+        "mental_generals",
+
+        "physical_generals",
+
+        "modalities",
+
+        "remedy",
+
+        "potency",
+
+        "dose"
+    ],
+
+    # -------------------------------------------------
+    # ALLOPATHY
+    # -------------------------------------------------
+
+    "ALLOPATHY": [
+
+        "chief_complaint",
+
+        "history",
+
+        "examination",
+
+        "diagnosis",
+
+        "icd_code",
+
+        "rx",
+
+        "advice",
+
+        "follow_up_days"
+    ],
+
+    # -------------------------------------------------
+    # AYURVEDIC
+    # -------------------------------------------------
+
+    "AYURVEDIC": [
+
+        "chief_complaint",
+
+        "prakriti",
+
+        "dosha",
+
+        "nadi",
+
+        "remedy",
+
+        "anupaan",
+
+        "pathya_apathya"
+    ],
+}
+
+
+# =====================================================
+# GET CONSULTATION SCHEMA
+# =====================================================
+
+def get_consultation_schema(
+    clinic_type: str
+) -> list:
+    """
+    Returns consultation fields dynamically
+    based on clinic type.
+    """
+
+    return CLINIC_FIELDS.get(
+
+        clinic_type.upper(),
+
+        CLINIC_FIELDS["ALLOPATHY"]
+    )
+
+
+# =====================================================
 # CREATE VISIT
 # =====================================================
 
@@ -345,9 +442,6 @@ def close_visit(
     clinic_id: str,
     data: CloseVisitInput
 ) -> dict:
-    """
-    Close visit + payment + followups.
-    """
 
     visit = _get_visit(
         db,
@@ -361,10 +455,6 @@ def close_visit(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Visit is already closed"
         )
-
-    # -------------------------------------------------
-    # PAYMENT MODE VALIDATION
-    # -------------------------------------------------
 
     try:
 
@@ -382,10 +472,6 @@ def close_visit(
             )
         )
 
-    # -------------------------------------------------
-    # CLOSE VISIT
-    # -------------------------------------------------
-
     visit.fee = data.fee
 
     visit.disease_type = (
@@ -402,12 +488,7 @@ def close_visit(
 
     visit.closed_at = datetime.now(IST)
 
-    # FINAL STATUS
     visit.visit_status = "COMPLETED"
-
-    # -------------------------------------------------
-    # PAYMENT RECORD
-    # -------------------------------------------------
 
     payment = Payment(
 
@@ -424,19 +505,11 @@ def close_visit(
 
     db.refresh(visit)
 
-    # -------------------------------------------------
-    # UPDATE PATIENT STATS
-    # -------------------------------------------------
-
     update_patient_stats(
         db,
         visit.patient_id,
         float(data.fee)
     )
-
-    # -------------------------------------------------
-    # SCHEDULE FOLLOWUPS
-    # -------------------------------------------------
 
     followups = schedule_followups(
 
@@ -481,8 +554,7 @@ def close_visit(
         "message":
             (
                 f"Visit closed. "
-                f"{len(followups)} follow-up "
-                f"reminders scheduled."
+                f"{len(followups)} follow-up reminders scheduled."
             )
     }
 
@@ -497,9 +569,6 @@ def update_visit_status(
     clinic_id: str,
     new_status: str
 ) -> dict:
-    """
-    Wizard workflow state update.
-    """
 
     visit = _get_visit(
         db,
@@ -533,9 +602,6 @@ def get_visit_wizard_state(
     visit_id: str,
     clinic_id: str
 ) -> dict:
-    """
-    Return current wizard progress.
-    """
 
     visit = _get_visit(
         db,
@@ -550,13 +616,9 @@ def get_visit_wizard_state(
 
         "step_2_consultation":
             (
-                visit.homeopathy_case
-                is not None
-
+                visit.homeopathy_case is not None
                 or
-
-                visit.allopathy_rx
-                is not None
+                visit.allopathy_rx is not None
             ),
 
         "step_3_billing":
@@ -568,10 +630,6 @@ def get_visit_wizard_state(
         "step_4_complete":
             visit.closed_at is not None
     }
-
-    # -------------------------------------------------
-    # CURRENT STEP
-    # -------------------------------------------------
 
     if not steps["step_1_vitals"]:
 
@@ -623,9 +681,6 @@ def get_visit(
     visit_id: str,
     clinic_id: str
 ) -> dict:
-    """
-    Complete visit details.
-    """
 
     visit = _get_visit(
         db,

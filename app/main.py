@@ -1,12 +1,18 @@
 import os
 
 from fastapi import FastAPI
+
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+
 from app.database import create_tables
 
-# Routers
+
+# =========================================================
+# ROUTERS
+# =========================================================
+
 from app.routers import (
     analytics,
     auth,
@@ -22,133 +28,328 @@ from app.routers import (
 )
 
 # Health Router
-from app.routers.health import router as health_router
+from app.routers.health import (
+    router as health_router
+)
 
-# WhatsApp Routers (two separate routers in one file)
+# WhatsApp Routers
 from app.routers.whatsapp import (
+
     router as webhook_router,
+
     send_router as whatsapp_send_router
 )
 
 # Scheduler
-from app.jobs.reminder_cron import start_scheduler
+from app.jobs.reminder_cron import (
+    start_scheduler
+)
+
 
 # =========================================================
-# FastAPI App
+# FASTAPI APP
 # =========================================================
+
 app = FastAPI(
+
     title="Vennova Clinic Growth Engine API",
-    description="AI-powered clinic growth operating system for modern clinics",
+
+    description=(
+        "AI-powered clinic growth "
+        "operating system for modern clinics"
+    ),
+
     version="2.0.0",
+
     docs_url="/docs",
+
     redoc_url="/redoc"
 )
 
 
 # =========================================================
-# CORS Configuration
+# CORS CONFIGURATION
 # =========================================================
+
 allowed_origins = os.getenv(
+
     "ALLOWED_ORIGINS",
+
     "*"
+
 ).split(",")
 
 app.add_middleware(
+
     CORSMiddleware,
+
     allow_origins=allowed_origins,
+
     allow_credentials=True,
+
     allow_methods=["*"],
+
     allow_headers=["*"],
 )
 
 
 # =========================================================
-# Include Routers
+# INCLUDE ROUTERS
 # =========================================================
 
-# Authentication
-app.include_router(auth.router)
+# ---------------------------------------------------------
+# AUTHENTICATION
+# ---------------------------------------------------------
 
-# Patients
-app.include_router(patients.router)
+app.include_router(
+    auth.router
+)
 
-# Visits / Consultations
-app.include_router(visits.router)
+# ---------------------------------------------------------
+# PATIENTS
+# ---------------------------------------------------------
 
-# Billing / Payments
-app.include_router(billing.router)
+app.include_router(
+    patients.router
+)
 
-# Analytics
-app.include_router(analytics.router)
+# ---------------------------------------------------------
+# VISITS / CONSULTATIONS
+# ---------------------------------------------------------
 
-# Followups / Reminders
-app.include_router(reminders.router)
+app.include_router(
+    visits.router
+)
 
-# Queue
-app.include_router(queue.router)
+# ---------------------------------------------------------
+# BILLING / PAYMENTS
+# ---------------------------------------------------------
 
-# WhatsApp — webhook receiver + outbound send
-app.include_router(webhook_router)        # GET /webhooks/whatsapp  (Meta verify)
-                                          # POST /webhooks/whatsapp (incoming msgs)
-app.include_router(whatsapp_send_router)  # POST /whatsapp/send/message
-                                          # POST /whatsapp/send/reminder
-                                          # POST /whatsapp/send/thankyou/{id}
-                                          # POST /whatsapp/send/birthday/{id}
+app.include_router(
+    billing.router
+)
 
-# Prescriptions
-app.include_router(prescriptions.router)
+# ---------------------------------------------------------
+# ANALYTICS
+# ---------------------------------------------------------
 
-# Staff Management
-app.include_router(staff.router)
+app.include_router(
+    analytics.router
+)
 
-# Appointments
-app.include_router(appointments.router)
+# ---------------------------------------------------------
+# FOLLOWUPS / REMINDERS
+# ---------------------------------------------------------
 
-# Imports
-app.include_router(imports.router)
+app.include_router(
+    reminders.router
+)
 
-# Health Check
-app.include_router(health_router)
+# ---------------------------------------------------------
+# QUEUE
+# ---------------------------------------------------------
+
+app.include_router(
+    queue.router
+)
+
+# ---------------------------------------------------------
+# WHATSAPP
+# ---------------------------------------------------------
+
+# GET  /webhooks/whatsapp
+# POST /webhooks/whatsapp
+
+app.include_router(
+    webhook_router
+)
+
+# POST /whatsapp/send/message
+# POST /whatsapp/send/reminder
+# POST /whatsapp/send/thankyou/{id}
+# POST /whatsapp/send/birthday/{id}
+
+app.include_router(
+    whatsapp_send_router
+)
+
+# ---------------------------------------------------------
+# PRESCRIPTIONS
+# ---------------------------------------------------------
+
+app.include_router(
+    prescriptions.router
+)
+
+# ---------------------------------------------------------
+# STAFF MANAGEMENT
+# ---------------------------------------------------------
+
+app.include_router(
+    staff.router
+)
+
+# ---------------------------------------------------------
+# APPOINTMENTS
+# ---------------------------------------------------------
+
+app.include_router(
+    appointments.router
+)
+
+# ---------------------------------------------------------
+# IMPORTS
+# ---------------------------------------------------------
+
+app.include_router(
+    imports.router
+)
+
+# ---------------------------------------------------------
+# HEALTH CHECK
+# ---------------------------------------------------------
+
+app.include_router(
+    health_router
+)
 
 
 # =========================================================
-# Startup Event
+# STARTUP EVENT
 # =========================================================
+
 @app.on_event("startup")
 def startup():
     """
     Runs when FastAPI server starts.
     """
+
     create_tables()
+
     start_scheduler()
 
     print("✅ Vennova v2.0 — All systems running")
+
     print("✅ Database tables initialized")
+
     print("✅ APScheduler started")
+
     print("✅ Supabase connected")
+
     print("✅ WhatsApp services active")
 
 
 # =========================================================
-# Root Endpoint
+# ROOT ENDPOINT
 # =========================================================
+
 @app.get("/")
 def root():
+
     return {
-        "app":     "Vennova Clinic Growth Engine",
-        "version": "2.0.0",
-        "status":  "running",
-        "docs":    "/docs"
+
+        "app":
+            "Vennova Clinic Growth Engine",
+
+        "version":
+            "2.0.0",
+
+        "status":
+            "running",
+
+        "docs":
+            "/docs"
     }
 
 
 # =========================================================
-# Health Check
+# HEALTH CHECK
 # =========================================================
+
 @app.get("/health")
 def health():
+
     return {
-        "status":  "healthy",
-        "app":     "Vennova",
-        "version": "2.0.0"
+
+        "status":
+            "healthy",
+
+        "app":
+            "Vennova",
+
+        "version":
+            "2.0.0"
+    }
+
+
+# =========================================================
+# PRIVACY POLICY
+# =========================================================
+
+@app.get("/privacy-policy")
+def privacy_policy():
+    """
+    Meta required privacy policy endpoint.
+    """
+
+    return {
+
+        "app":
+            "Vennova",
+
+        "message":
+            (
+                "Vennova respects user privacy "
+                "and securely stores clinic data. "
+                "Users may contact support for "
+                "data-related requests."
+            )
+    }
+
+
+# =========================================================
+# TERMS & CONDITIONS
+# =========================================================
+
+@app.get("/terms")
+def terms():
+    """
+    Meta required terms endpoint.
+    """
+
+    return {
+
+        "app":
+            "Vennova",
+
+        "message":
+            (
+                "By using Vennova, users agree "
+                "to use the platform responsibly "
+                "for clinic management and "
+                "patient communication purposes."
+            )
+    }
+
+
+# =========================================================
+# DELETE USER DATA
+# =========================================================
+
+@app.get("/delete-data")
+def delete_data():
+    """
+    Meta required data deletion endpoint.
+    """
+
+    return {
+
+        "app":
+            "Vennova",
+
+        "message":
+            (
+                "To request deletion of account "
+                "or patient data, contact support."
+            )
     }
