@@ -15,7 +15,6 @@ from app.routers import (
     billing,
     reminders,
     queue,
-    whatsapp,
     prescriptions,
     staff,
     appointments,
@@ -25,7 +24,7 @@ from app.routers import (
 # Health Router
 from app.routers.health import router as health_router
 
-# WhatsApp Webhook Routers
+# WhatsApp Routers (two separate routers in one file)
 from app.routers.whatsapp import (
     router as webhook_router,
     send_router as whatsapp_send_router
@@ -33,7 +32,6 @@ from app.routers.whatsapp import (
 
 # Scheduler
 from app.jobs.reminder_cron import start_scheduler
-
 
 # =========================================================
 # FastAPI App
@@ -49,12 +47,6 @@ app = FastAPI(
 
 # =========================================================
 # CORS Configuration
-# =========================================================
-# Example:
-# ALLOWED_ORIGINS=http://localhost:3000,https://app.vennova.ai
-#
-# Railway ENV:
-# ALLOWED_ORIGINS=https://yourfrontend.com
 # =========================================================
 allowed_origins = os.getenv(
     "ALLOWED_ORIGINS",
@@ -95,10 +87,13 @@ app.include_router(reminders.router)
 # Queue
 app.include_router(queue.router)
 
-# WhatsApp
-app.include_router(whatsapp.router)
-app.include_router(webhook_router)
-app.include_router(whatsapp_send_router)
+# WhatsApp — webhook receiver + outbound send
+app.include_router(webhook_router)        # GET /webhooks/whatsapp  (Meta verify)
+                                          # POST /webhooks/whatsapp (incoming msgs)
+app.include_router(whatsapp_send_router)  # POST /whatsapp/send/message
+                                          # POST /whatsapp/send/reminder
+                                          # POST /whatsapp/send/thankyou/{id}
+                                          # POST /whatsapp/send/birthday/{id}
 
 # Prescriptions
 app.include_router(prescriptions.router)
@@ -122,13 +117,9 @@ app.include_router(health_router)
 @app.on_event("startup")
 def startup():
     """
-    Runs when FastAPI server starts
+    Runs when FastAPI server starts.
     """
-
-    # Create DB tables
     create_tables()
-
-    # Start scheduler
     start_scheduler()
 
     print("✅ Vennova v2.0 — All systems running")
@@ -144,10 +135,10 @@ def startup():
 @app.get("/")
 def root():
     return {
-        "app": "Vennova Clinic Growth Engine",
+        "app":     "Vennova Clinic Growth Engine",
         "version": "2.0.0",
-        "status": "running",
-        "docs": "/docs"
+        "status":  "running",
+        "docs":    "/docs"
     }
 
 
@@ -157,7 +148,7 @@ def root():
 @app.get("/health")
 def health():
     return {
-        "status": "healthy",
-        "app": "Vennova",
+        "status":  "healthy",
+        "app":     "Vennova",
         "version": "2.0.0"
     }
