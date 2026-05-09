@@ -107,6 +107,43 @@ class Clinic(BaseModel):
         nullable=True
     )
 
+    # NEW SUBSCRIPTION FIELDS
+
+    subscription_plan = Column(
+        String,
+        nullable=True
+    )
+
+    subscription_period = Column(
+        String,
+        nullable=True
+    )  # monthly / yearly
+
+    razorpay_subscription_id = Column(
+        String,
+        nullable=True
+    )
+
+    subscription_start_date = Column(
+        DateTime,
+        nullable=True
+    )
+
+    max_patients_per_month = Column(
+        Integer,
+        default=100
+    )
+
+    max_staff = Column(
+        Integer,
+        default=0
+    )
+
+    max_doctors = Column(
+        Integer,
+        default=1
+    )
+
     staff_limit = Column(
         Integer,
         default=2

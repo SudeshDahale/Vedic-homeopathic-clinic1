@@ -44,7 +44,7 @@ from app.routers.whatsapp import (
 from app.jobs.reminder_cron import (
     start_scheduler
 )
-
+from app.routers.billing_subscription import router as subscription_router
 
 # =========================================================
 # FASTAPI APP
@@ -213,7 +213,7 @@ app.include_router(
     health_router
 )
 
-
+app.include_router(subscription_router) 
 # =========================================================
 # STARTUP EVENT
 # =========================================================
