@@ -91,3 +91,10 @@ class AppointmentStatus(str, Enum):
     COMPLETED  = "COMPLETED"
     CANCELLED  = "CANCELLED"
     NO_SHOW    = "NO_SHOW"
+
+class VisitStatus(str, Enum):
+    DRAFT      = "DRAFT"       # started, not complete
+    ACTIVE     = "ACTIVE"      # consultation in progress  
+    BILLING    = "BILLING"     # consultation done, waiting payment
+    COMPLETED  = "COMPLETED"   # paid and closed
+    CANCELLED  = "CANCELLED"
