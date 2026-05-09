@@ -153,12 +153,53 @@ def get_patients(
     List/search patients.
     """
 
+    # -------------------------------------------------
+    # DEBUG LOGS
+    # -------------------------------------------------
+
+    total_all = db.query(Patient).count()
+
+    total_clinic = db.query(Patient).filter(
+        Patient.clinic_id == clinic_id
+    ).count()
+
+    total_active = db.query(Patient).filter(
+        Patient.clinic_id == clinic_id,
+        Patient.is_active == True
+    ).count()
+
+    print(
+        f"DEBUG: Total patients in DB: {total_all}"
+    )
+
+    print(
+        f"DEBUG: Patients for clinic "
+        f"{clinic_id}: {total_clinic}"
+    )
+
+    print(
+        f"DEBUG: Active patients for clinic "
+        f"{clinic_id}: {total_active}"
+    )
+
+    # -------------------------------------------------
+    # MAIN QUERY
+    # -------------------------------------------------
+
     query = db.query(Patient).filter(
         Patient.clinic_id == clinic_id,
         Patient.is_active == True
     )
 
+    # -------------------------------------------------
+    # SEARCH
+    # -------------------------------------------------
+
     if search:
+
+        print(
+            f"DEBUG: Search term = {search}"
+        )
 
         query = query.filter(
             or_(
@@ -181,9 +222,20 @@ def get_patients(
             )
         )
 
-    return query.order_by(
+    # -------------------------------------------------
+    # FETCH RESULTS
+    # -------------------------------------------------
+
+    patients = query.order_by(
         Patient.created_at.desc()
     ).offset(skip).limit(limit).all()
+
+    print(
+        f"DEBUG: Returning "
+        f"{len(patients)} patients"
+    )
+
+    return patients
 
 
 # =====================================================

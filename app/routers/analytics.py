@@ -2,9 +2,16 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+
 from app.services import analytics_service
-from app.middleware.auth_middleware import doctor_only
+
+from app.middleware.auth_middleware import (
+    doctor_only,
+    get_current_user
+)
+
 from app.models.user import User
+
 
 router = APIRouter(
     prefix="/analytics",
@@ -15,6 +22,7 @@ router = APIRouter(
 # ─────────────────────────────────────────────────────
 # FULL DASHBOARD
 # ─────────────────────────────────────────────────────
+
 @router.get("/dashboard")
 def get_dashboard(
     db: Session = Depends(get_db),
@@ -27,6 +35,7 @@ def get_dashboard(
     clinic_id = current_user.clinic_id
 
     return {
+
         "daily_revenue":
             analytics_service.daily_revenue(
                 db,
@@ -69,6 +78,7 @@ def get_dashboard(
 # ─────────────────────────────────────────────────────
 # DAILY REVENUE
 # ─────────────────────────────────────────────────────
+
 @router.get("/revenue/daily")
 def get_daily_revenue(
     db: Session = Depends(get_db),
@@ -84,6 +94,7 @@ def get_daily_revenue(
 # ─────────────────────────────────────────────────────
 # MONTHLY REVENUE
 # ─────────────────────────────────────────────────────
+
 @router.get("/revenue/monthly")
 def get_monthly_revenue(
     db: Session = Depends(get_db),
@@ -99,6 +110,7 @@ def get_monthly_revenue(
 # ─────────────────────────────────────────────────────
 # MISSED PATIENTS
 # ─────────────────────────────────────────────────────
+
 @router.get("/missed-patients")
 def get_missed_patients(
     db: Session = Depends(get_db),
@@ -114,6 +126,7 @@ def get_missed_patients(
 # ─────────────────────────────────────────────────────
 # RETENTION
 # ─────────────────────────────────────────────────────
+
 @router.get("/retention")
 def get_retention(
     db: Session = Depends(get_db),
@@ -129,6 +142,7 @@ def get_retention(
 # ─────────────────────────────────────────────────────
 # TOP PATIENTS
 # ─────────────────────────────────────────────────────
+
 @router.get("/top-patients")
 def get_top_patients(
     limit: int = 10,
@@ -146,6 +160,7 @@ def get_top_patients(
 # ─────────────────────────────────────────────────────
 # FOLLOWUPS TODAY
 # ─────────────────────────────────────────────────────
+
 @router.get("/followups/today")
 def get_followups_today(
     db: Session = Depends(get_db),
@@ -153,6 +168,32 @@ def get_followups_today(
 ):
 
     return analytics_service.followups_due_today(
+        db,
+        current_user.clinic_id
+    )
+
+
+# ─────────────────────────────────────────────────────
+# SUMMARY TODAY
+# Alias for Lovable frontend compatibility
+# ─────────────────────────────────────────────────────
+
+@router.get("/summary/today")
+def summary_today(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Alias for dashboard —
+    frontend calls this endpoint.
+
+    Returns same data as:
+    /analytics/dashboard
+    """
+
+    from app.services import analytics_service
+
+    return analytics_service.get_full_dashboard(
         db,
         current_user.clinic_id
     )
