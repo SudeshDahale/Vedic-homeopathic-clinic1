@@ -1,0 +1,2203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vedic Clinic — Practice Management</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sage: #5C7A5A;
+    --sage-light: #8AAE87;
+    --sage-pale: #EDF4EC;
+    --earth: #8B6F47;
+    --earth-light: #C4A882;
+    --earth-pale: #F7F0E8;
+    --ink: #1C2B1A;
+    --ink-mid: #3D4F3B;
+    --ink-soft: #6B7F69;
+    --chalk: #F9FBF9;
+    --white: #FFFFFF;
+    --border: #D8E4D7;
+    --border-mid: #C2D5C0;
+    --red: #C0392B;
+    --red-pale: #FDF0EF;
+    --amber: #D4860A;
+    --amber-pale: #FEF8EC;
+    --blue: #2B6CB0;
+    --blue-pale: #EBF4FF;
+    --shadow-sm: 0 1px 3px rgba(28,43,26,0.08);
+    --shadow: 0 4px 16px rgba(28,43,26,0.10);
+    --shadow-lg: 0 12px 40px rgba(28,43,26,0.14);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --transition: 0.18s ease;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--chalk);
+    color: var(--ink);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ===== LOGIN SCREEN ===== */
+  #login-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #1C2B1A 0%, #2D4A2A 50%, #1C2B1A 100%);
+    position: relative;
+    overflow: hidden;
+  }
+
+  #login-screen::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+
+  .login-card {
+    background: var(--white);
+    border-radius: 20px;
+    padding: 56px 48px;
+    width: 420px;
+    box-shadow: var(--shadow-lg);
+    position: relative;
+    z-index: 1;
+  }
+
+  .clinic-brand {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  .clinic-brand .leaf-icon {
+    width: 52px; height: 52px;
+    background: var(--sage-pale);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+    font-size: 24px;
+  }
+
+  .clinic-brand h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px;
+    color: var(--ink);
+    line-height: 1.2;
+  }
+
+  .clinic-brand p {
+    color: var(--ink-soft);
+    font-size: 13px;
+    margin-top: 4px;
+    font-weight: 300;
+    letter-spacing: 0.5px;
+  }
+
+  .role-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+
+  .role-btn {
+    padding: 16px 12px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--chalk);
+    cursor: pointer;
+    text-align: center;
+    transition: var(--transition);
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .role-btn .role-icon { font-size: 20px; display: block; margin-bottom: 6px; }
+  .role-btn .role-label { font-size: 13px; font-weight: 500; color: var(--ink-mid); display: block; }
+  .role-btn .role-sub { font-size: 11px; color: var(--ink-soft); display: block; margin-top: 2px; }
+
+  .role-btn.active {
+    border-color: var(--sage);
+    background: var(--sage-pale);
+  }
+  .role-btn.active .role-label { color: var(--sage); }
+
+  .form-group { margin-bottom: 18px; }
+  .form-label { display: block; font-size: 12px; font-weight: 500; color: var(--ink-mid); margin-bottom: 6px; letter-spacing: 0.3px; }
+
+  .form-input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--white);
+    transition: var(--transition);
+    outline: none;
+  }
+  .form-input:focus { border-color: var(--sage); box-shadow: 0 0 0 3px rgba(92,122,90,0.12); }
+
+  .btn-primary {
+    width: 100%;
+    padding: 14px;
+    background: var(--sage);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    letter-spacing: 0.2px;
+  }
+  .btn-primary:hover { background: var(--ink-mid); transform: translateY(-1px); box-shadow: var(--shadow); }
+
+  /* ===== MAIN APP ===== */
+  #app { display: none; min-height: 100vh; }
+
+  /* ===== TOPBAR ===== */
+  .topbar {
+    height: 60px;
+    background: var(--ink);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .topbar-brand {
+    font-family: 'DM Serif Display', serif;
+    font-size: 18px;
+    color: var(--white);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .topbar-brand span { color: var(--sage-light); }
+
+  .topbar-nav {
+    display: flex;
+    gap: 4px;
+    margin-left: 20px;
+    flex: 1;
+  }
+
+  .nav-item {
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 400;
+    color: rgba(255,255,255,0.6);
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.9); }
+  .nav-item.active { background: var(--sage); color: white; font-weight: 500; }
+
+  .topbar-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
+  }
+
+  .live-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #4CAF50;
+    animation: pulse-dot 2s infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.3); }
+  }
+
+  .user-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 5px 12px 5px 6px;
+    cursor: pointer;
+  }
+  .user-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--sage);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: white;
+  }
+  .user-info { line-height: 1.2; }
+  .user-name { font-size: 12px; color: white; font-weight: 500; }
+  .user-role { font-size: 10px; color: rgba(255,255,255,0.5); }
+
+  /* ===== LAYOUT ===== */
+  .app-body {
+    display: flex;
+    height: calc(100vh - 60px);
+  }
+
+  .main-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px;
+  }
+
+  /* ===== PANELS ===== */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ===== SECTION HEADER ===== */
+  .section-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .section-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px;
+    color: var(--ink);
+    line-height: 1.1;
+  }
+
+  .section-sub {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 4px;
+    font-weight: 300;
+  }
+
+  .btn {
+    padding: 9px 18px;
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn-sage { background: var(--sage); color: white; }
+  .btn-sage:hover { background: var(--ink-mid); transform: translateY(-1px); }
+  .btn-outline { background: transparent; border: 1.5px solid var(--border-mid); color: var(--ink-mid); }
+  .btn-outline:hover { border-color: var(--sage); color: var(--sage); background: var(--sage-pale); }
+  .btn-earth { background: var(--earth); color: white; }
+  .btn-earth:hover { background: #6d5335; }
+  .btn-red { background: var(--red); color: white; }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+  /* ===== CARDS ===== */
+  .card {
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .card-header {
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .card-title { font-size: 14px; font-weight: 600; color: var(--ink-mid); }
+  .card-body { padding: 20px; }
+
+  /* ===== STATS ROW ===== */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--sage);
+    border-radius: 0 0 var(--radius) var(--radius);
+  }
+
+  .stat-card.earth::after { background: var(--earth); }
+  .stat-card.amber::after { background: var(--amber); }
+  .stat-card.blue::after { background: var(--blue); }
+
+  .stat-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 36px;
+    color: var(--ink);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-label { font-size: 12px; color: var(--ink-soft); font-weight: 400; }
+  .stat-icon {
+    position: absolute;
+    top: 18px; right: 18px;
+    font-size: 22px;
+    opacity: 0.15;
+  }
+
+  /* ===== QUEUE ===== */
+  .queue-grid {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 20px;
+  }
+
+  .queue-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .queue-item {
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+  }
+
+  .queue-item:hover { border-color: var(--sage-light); box-shadow: var(--shadow); transform: translateY(-1px); }
+  .queue-item.active-patient { border-color: var(--sage); background: var(--sage-pale); }
+  .queue-item.waiting { opacity: 0.85; }
+  .queue-item.done { opacity: 0.5; }
+
+  .queue-num {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: var(--chalk);
+    border: 1.5px solid var(--border-mid);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Serif Display', serif;
+    font-size: 16px;
+    color: var(--ink-mid);
+    flex-shrink: 0;
+  }
+
+  .queue-item.active-patient .queue-num {
+    background: var(--sage);
+    border-color: var(--sage);
+    color: white;
+  }
+
+  .queue-info { flex: 1; min-width: 0; }
+  .queue-name { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .queue-meta { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+
+  .queue-badge {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+
+  .badge-active { background: var(--sage-pale); color: var(--sage); border: 1px solid var(--sage-light); }
+  .badge-waiting { background: var(--amber-pale); color: var(--amber); border: 1px solid #F0C060; }
+  .badge-done { background: var(--chalk); color: var(--ink-soft); border: 1px solid var(--border); }
+  .badge-new { background: var(--blue-pale); color: var(--blue); border: 1px solid #90BEF0; }
+  .badge-returning { background: var(--earth-pale); color: var(--earth); border: 1px solid var(--earth-light); }
+
+  /* ===== ADD PATIENT FORM ===== */
+  .add-patient-card { position: sticky; top: 0; }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-group { margin-bottom: 14px; }
+  .form-label-sm {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .form-input-sm {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--chalk);
+    transition: var(--transition);
+    outline: none;
+  }
+  .form-input-sm:focus { border-color: var(--sage); background: var(--white); box-shadow: 0 0 0 3px rgba(92,122,90,0.10); }
+
+  select.form-input-sm { cursor: pointer; }
+
+  /* ===== DOCTOR VIEW — PATIENT SCREEN ===== */
+  .patient-screen {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 20px;
+    height: calc(100vh - 120px);
+  }
+
+  .patient-sidebar { display: flex; flex-direction: column; gap: 16px; overflow-y: auto; }
+
+  .patient-hero {
+    background: var(--ink);
+    border-radius: var(--radius);
+    padding: 24px;
+    color: white;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .patient-hero::before {
+    content: '';
+    position: absolute;
+    top: -30px; right: -30px;
+    width: 100px; height: 100px;
+    border-radius: 50%;
+    background: rgba(92,122,90,0.2);
+  }
+
+  .patient-avatar-large {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: var(--sage);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    margin: 0 auto 14px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .patient-name-large {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    margin-bottom: 4px;
+  }
+
+  .patient-meta-row {
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+    margin-top: 4px;
+  }
+
+  .history-flag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--earth);
+    color: white;
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 500;
+    margin-top: 10px;
+  }
+
+  .history-flag.new-patient { background: rgba(255,255,255,0.15); }
+
+  .info-block { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .info-block-title { padding: 12px 16px; background: var(--chalk); border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 600; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.5px; }
+  .info-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+  .info-row:last-child { border-bottom: none; }
+  .info-key { font-size: 12px; color: var(--ink-soft); }
+  .info-val { font-size: 12px; font-weight: 500; color: var(--ink); }
+
+  /* ===== PRESCRIPTION PAD ===== */
+  .prescription-area { display: flex; flex-direction: column; gap: 16px; overflow-y: auto; }
+
+  .rx-tabs {
+    display: flex;
+    gap: 0;
+    background: var(--chalk);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 4px;
+  }
+
+  .rx-tab {
+    flex: 1;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: var(--transition);
+    text-align: center;
+    border: none;
+    background: transparent;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .rx-tab.active { background: var(--white); color: var(--sage); box-shadow: var(--shadow-sm); }
+
+  .rx-section { display: none; }
+  .rx-section.active { display: block; }
+
+  /* Homeopathy specific */
+  .remedy-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr auto;
+    gap: 8px;
+    align-items: end;
+    margin-bottom: 8px;
+  }
+
+  /* Allopathy specific */
+  .drug-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr auto;
+    gap: 8px;
+    align-items: end;
+    margin-bottom: 8px;
+  }
+
+  .remove-btn {
+    width: 30px; height: 30px;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    background: white;
+    color: var(--ink-soft);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    transition: var(--transition);
+    margin-bottom: 2px;
+  }
+  .remove-btn:hover { border-color: var(--red); color: var(--red); background: var(--red-pale); }
+
+  .add-med-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--sage);
+    cursor: pointer;
+    padding: 6px 0;
+    border: none;
+    background: none;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+  }
+  .add-med-btn:hover { color: var(--ink-mid); }
+
+  .vital-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .vital-input-wrap { position: relative; }
+  .vital-unit {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    color: var(--ink-soft);
+    pointer-events: none;
+  }
+
+  /* ===== HISTORY TIMELINE ===== */
+  .timeline { display: flex; flex-direction: column; gap: 0; }
+
+  .timeline-item {
+    display: flex;
+    gap: 14px;
+    padding-bottom: 20px;
+    position: relative;
+  }
+
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 28px;
+    bottom: 0;
+    width: 1px;
+    background: var(--border);
+  }
+
+  .timeline-item:last-child::before { display: none; }
+
+  .timeline-dot {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: var(--sage-pale);
+    border: 2px solid var(--sage-light);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  .timeline-content {
+    flex: 1;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+  }
+
+  .timeline-date { font-size: 11px; color: var(--ink-soft); margin-bottom: 6px; }
+  .timeline-chief { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+  .timeline-rx { font-size: 12px; color: var(--ink-mid); }
+
+  /* ===== BILLING PANEL ===== */
+  .billing-grid {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 20px;
+  }
+
+  .billing-table { width: 100%; border-collapse: collapse; }
+  .billing-table th {
+    text-align: left;
+    padding: 10px 14px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    border-bottom: 1px solid var(--border);
+    background: var(--chalk);
+  }
+
+  .billing-table td {
+    padding: 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--ink);
+    vertical-align: middle;
+  }
+
+  .billing-table tr:hover td { background: var(--sage-pale); }
+
+  .invoice-card { position: sticky; top: 0; }
+
+  .invoice-line {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .invoice-line:last-child { border-bottom: none; }
+  .invoice-total {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ink);
+    border-top: 2px solid var(--ink);
+    margin-top: 8px;
+  }
+
+  /* ===== NOTIFICATION TOAST ===== */
+  #toast-container {
+    position: fixed;
+    top: 76px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .toast {
+    background: var(--ink);
+    color: white;
+    padding: 14px 18px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 280px;
+    animation: slide-in 0.3s ease;
+    border-left: 3px solid var(--sage);
+  }
+
+  .toast.toast-alert { border-left-color: var(--amber); }
+  .toast.toast-success { border-left-color: #4CAF50; }
+
+  @keyframes slide-in {
+    from { transform: translateX(120%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  @keyframes fade-out {
+    from { opacity: 1; }
+    to { opacity: 0; transform: translateX(40px); }
+  }
+
+  /* ===== DOCTOR NEXT PATIENT POPUP ===== */
+  .next-patient-popup {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    background: var(--ink);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    color: white;
+    box-shadow: var(--shadow-lg);
+    z-index: 999;
+    min-width: 300px;
+    border-top: 3px solid var(--sage);
+    animation: slide-up 0.4s ease;
+    display: none;
+  }
+
+  @keyframes slide-up {
+    from { transform: translateY(40px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .popup-label { font-size: 10px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .popup-name { font-family: 'DM Serif Display', serif; font-size: 22px; margin-bottom: 4px; }
+  .popup-meta { font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 14px; }
+  .popup-flag { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; padding: 3px 10px; border-radius: 20px; margin-bottom: 14px; }
+  .popup-actions { display: flex; gap: 8px; }
+  .popup-btn { flex: 1; padding: 8px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; transition: var(--transition); border: none; font-family: 'DM Sans', sans-serif; }
+  .popup-btn-accept { background: var(--sage); color: white; }
+  .popup-btn-accept:hover { background: var(--sage-light); }
+  .popup-btn-dismiss { background: rgba(255,255,255,0.1); color: white; }
+  .popup-btn-dismiss:hover { background: rgba(255,255,255,0.2); }
+
+  /* ===== EMPTY STATES ===== */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--ink-soft);
+  }
+  .empty-state .empty-icon { font-size: 42px; margin-bottom: 14px; opacity: 0.4; }
+  .empty-state h3 { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--ink-mid); margin-bottom: 8px; }
+  .empty-state p { font-size: 13px; max-width: 280px; margin: 0 auto; }
+
+  /* ===== DOCTOR QUEUE OVERVIEW ===== */
+  .doctor-queue-item {
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 8px;
+    transition: var(--transition);
+  }
+  .doctor-queue-item.current { border-color: var(--sage); background: var(--sage-pale); }
+  .dq-avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--sage-pale);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    color: var(--sage);
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .doctor-queue-item.current .dq-avatar { background: var(--sage); color: white; }
+  .dq-info { flex: 1; }
+  .dq-name { font-size: 14px; font-weight: 600; }
+  .dq-meta { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+
+  /* ===== FOLLOW-UP PANEL ===== */
+  .followup-item {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 8px;
+    transition: var(--transition);
+  }
+  .followup-item:hover { box-shadow: var(--shadow); }
+  .followup-date-badge {
+    text-align: center;
+    background: var(--sage-pale);
+    border: 1px solid var(--sage-light);
+    border-radius: 8px;
+    padding: 6px 12px;
+    flex-shrink: 0;
+  }
+  .fu-day { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--sage); line-height: 1; }
+  .fu-month { font-size: 10px; text-transform: uppercase; color: var(--sage); letter-spacing: 0.5px; }
+
+  /* ===== TEXTAREA ===== */
+  .form-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--chalk);
+    resize: vertical;
+    min-height: 80px;
+    transition: var(--transition);
+    outline: none;
+    line-height: 1.5;
+  }
+  .form-textarea:focus { border-color: var(--sage); background: var(--white); box-shadow: 0 0 0 3px rgba(92,122,90,0.10); }
+
+  /* ===== MODAL ===== */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(28,43,26,0.5);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    display: none;
+    backdrop-filter: blur(2px);
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 32px;
+    width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-lg);
+    animation: modal-in 0.25s ease;
+  }
+
+  @keyframes modal-in {
+    from { transform: scale(0.95) translateY(10px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
+  }
+
+  .modal-title { font-family: 'DM Serif Display', serif; font-size: 22px; margin-bottom: 6px; }
+  .modal-sub { font-size: 13px; color: var(--ink-soft); margin-bottom: 24px; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+
+  /* ===== THANK YOU SCREEN ===== */
+  .thankyou-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--ink);
+    z-index: 2000;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    text-align: center;
+  }
+
+  .thankyou-overlay.open { display: flex; }
+
+  .thankyou-icon {
+    font-size: 72px;
+    margin-bottom: 24px;
+    animation: bounce-in 0.6s ease;
+  }
+
+  @keyframes bounce-in {
+    0% { transform: scale(0); }
+    60% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+  }
+
+  .thankyou-name { font-family: 'DM Serif Display', serif; font-size: 42px; margin-bottom: 12px; }
+  .thankyou-sub { font-size: 16px; color: rgba(255,255,255,0.6); margin-bottom: 40px; max-width: 400px; line-height: 1.6; }
+  .thankyou-invoice {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: var(--radius);
+    padding: 24px 32px;
+    margin-bottom: 32px;
+    min-width: 320px;
+  }
+
+  .invoice-number { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: rgba(255,255,255,0.4); margin-bottom: 16px; }
+  .invoice-items { text-align: left; margin-bottom: 16px; }
+  .invoice-item-row { display: flex; justify-content: space-between; font-size: 13px; padding: 5px 0; color: rgba(255,255,255,0.8); border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .invoice-grand { display: flex; justify-content: space-between; font-size: 20px; font-weight: 600; padding-top: 12px; }
+
+  /* ===== SCROLLBARS ===== */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--ink-soft); }
+
+  /* ===== DOCTOR TYPE INDICATOR ===== */
+  .doctor-type-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .tag-homeo { background: var(--sage-pale); color: var(--sage); border: 1px solid var(--sage-light); }
+  .tag-allopathy { background: var(--blue-pale); color: var(--blue); border: 1px solid #90BEF0; }
+
+  /* ===== DIVIDER ===== */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  /* ===== MISC ===== */
+  .text-muted { color: var(--ink-soft); font-size: 12px; }
+  .text-sm { font-size: 13px; }
+  .fw-600 { font-weight: 600; }
+  .mt-4 { margin-top: 4px; }
+  .mb-8 { margin-bottom: 8px; }
+  .mb-16 { margin-bottom: 16px; }
+  .d-flex { display: flex; }
+  .align-center { align-items: center; }
+  .gap-8 { gap: 8px; }
+  .gap-12 { gap: 12px; }
+  .flex-1 { flex: 1; }
+
+  .current-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: rgba(255,255,255,0.4);
+  }
+
+  /* Responsive tweaks */
+  @media (max-width: 1200px) {
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .queue-grid { grid-template-columns: 1fr; }
+    .patient-screen { grid-template-columns: 1fr; height: auto; }
+    .billing-grid { grid-template-columns: 1fr; }
+  }
+
+  /* Animated queue progress */
+  .queue-progress {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 12px;
+  }
+  .queue-progress-bar {
+    height: 100%;
+    background: var(--sage);
+    border-radius: 2px;
+    transition: width 0.8s ease;
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN SCREEN ===== -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="clinic-brand">
+      <div class="leaf-icon">🌿</div>
+      <h1>Vedic Clinic</h1>
+      <p>Practice Management System</p>
+    </div>
+
+    <div class="role-selector">
+      <div class="role-btn active" data-role="receptionist" onclick="selectRole('receptionist')">
+        <span class="role-icon">🗂️</span>
+        <span class="role-label">Receptionist</span>
+        <span class="role-sub">Patient flow & billing</span>
+      </div>
+      <div class="role-btn" data-role="doctor-homeo" onclick="selectRole('doctor-homeo')">
+        <span class="role-icon">🌱</span>
+        <span class="role-label">Dr. Homeopathy</span>
+        <span class="role-sub">Constitutional care</span>
+      </div>
+      <div class="role-btn" data-role="doctor-allo" onclick="selectRole('doctor-allo')">
+        <span class="role-icon">🩺</span>
+        <span class="role-label">Dr. Allopathy</span>
+        <span class="role-sub">Clinical treatment</span>
+      </div>
+      <div class="role-btn" data-role="admin" onclick="selectRole('admin')">
+        <span class="role-icon">📊</span>
+        <span class="role-label">Admin</span>
+        <span class="role-sub">Reports & analytics</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Username</label>
+      <input type="text" class="form-input" id="login-username" placeholder="Enter your username" value="priya.sharma">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input type="password" class="form-input" id="login-password" placeholder="••••••••" value="••••••••">
+    </div>
+    <button class="btn-primary" onclick="doLogin()">Sign in to Clinic →</button>
+    <p style="text-align:center; font-size:12px; color:var(--ink-soft); margin-top:16px;">Demo mode — all data is simulated</p>
+  </div>
+</div>
+
+<!-- ===== MAIN APP ===== -->
+<div id="app">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-brand">🌿 <span>Vedic</span>&nbsp;Clinic</div>
+
+    <nav class="topbar-nav" id="main-nav">
+      <!-- Injected by JS -->
+    </nav>
+
+    <div class="topbar-right">
+      <div class="live-badge"><div class="live-dot"></div> Live</div>
+      <div class="current-time" id="clock">--:--</div>
+      <div class="user-pill" onclick="logout()">
+        <div class="user-avatar" id="user-avatar-initials">PR</div>
+        <div class="user-info">
+          <div class="user-name" id="user-display-name">Priya Sharma</div>
+          <div class="user-role" id="user-display-role">Receptionist</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- APP BODY -->
+  <div class="app-body">
+    <div class="main-content" id="main-content">
+      <!-- Dynamic panels injected here -->
+    </div>
+  </div>
+</div>
+
+<!-- ===== NEXT PATIENT POPUP (Doctor) ===== -->
+<div class="next-patient-popup" id="next-patient-popup">
+  <div class="popup-label">⚡ Next Patient Ready</div>
+  <div class="popup-name" id="popup-patient-name">—</div>
+  <div class="popup-meta" id="popup-patient-meta">—</div>
+  <div class="popup-flag" id="popup-patient-flag"></div>
+  <div class="popup-actions">
+    <button class="popup-btn popup-btn-accept" onclick="acceptNextPatient()">Start Consultation</button>
+    <button class="popup-btn popup-btn-dismiss" onclick="dismissPopup()">In a moment</button>
+  </div>
+</div>
+
+<!-- ===== TOAST CONTAINER ===== -->
+<div id="toast-container"></div>
+
+<!-- ===== ADD PATIENT MODAL ===== -->
+<div class="modal-overlay" id="add-patient-modal">
+  <div class="modal">
+    <div class="modal-title">Register Walk-in Patient</div>
+    <div class="modal-sub">Add patient to today's queue</div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label-sm">First Name *</label>
+        <input type="text" class="form-input-sm" id="new-fname" placeholder="Rahul">
+      </div>
+      <div class="form-group">
+        <label class="form-label-sm">Last Name *</label>
+        <input type="text" class="form-input-sm" id="new-lname" placeholder="Mehta">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label-sm">Phone *</label>
+        <input type="tel" class="form-input-sm" id="new-phone" placeholder="9876543210">
+      </div>
+      <div class="form-group">
+        <label class="form-label-sm">Age</label>
+        <input type="number" class="form-input-sm" id="new-age" placeholder="28">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label-sm">Gender</label>
+        <select class="form-input-sm" id="new-gender">
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label-sm">Doctor</label>
+        <select class="form-input-sm" id="new-doctor">
+          <option value="dr-homeo">Dr. Anjali Verma (Homeopathy)</option>
+          <option value="dr-allo">Dr. Suresh Kumar (Allopathy)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label-sm">Chief Complaint</label>
+      <input type="text" class="form-input-sm" id="new-complaint" placeholder="e.g. Fever, Headache, Skin rash...">
+    </div>
+    <div class="form-group">
+      <label class="form-label-sm">Visit Type</label>
+      <select class="form-input-sm" id="new-visit-type">
+        <option value="walk-in">Walk-in</option>
+        <option value="appointment">Appointment</option>
+        <option value="follow-up">Follow-up</option>
+      </select>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('add-patient-modal')">Cancel</button>
+      <button class="btn btn-sage" onclick="addPatient()">Add to Queue →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== BILLING MODAL ===== -->
+<div class="modal-overlay" id="billing-modal">
+  <div class="modal">
+    <div class="modal-title">Process Payment</div>
+    <div class="modal-sub" id="billing-patient-name-display">—</div>
+    <hr class="divider">
+    <div id="billing-items-list"></div>
+    <div class="invoice-total" style="margin-top:16px;">
+      <span>Total</span>
+      <span id="billing-total">₹0</span>
+    </div>
+    <hr class="divider">
+    <div class="form-group">
+      <label class="form-label-sm">Payment Method</label>
+      <select class="form-input-sm" id="payment-method">
+        <option value="cash">Cash</option>
+        <option value="upi">UPI / QR</option>
+        <option value="card">Card</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label-sm">Amount Received (₹)</label>
+      <input type="number" class="form-input-sm" id="amount-received" placeholder="0">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('billing-modal')">Cancel</button>
+      <button class="btn btn-sage" onclick="processPayment()">Complete Payment & Print Invoice</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== THANK YOU SCREEN ===== -->
+<div class="thankyou-overlay" id="thankyou-overlay">
+  <div class="thankyou-icon">🙏</div>
+  <div class="thankyou-name" id="ty-patient-name">Thank you!</div>
+  <div class="thankyou-sub">Your visit has been completed. We've sent your invoice and prescription to your registered mobile number via WhatsApp.</div>
+  <div class="thankyou-invoice">
+    <div class="invoice-number" id="ty-invoice-num">INV-2026-0001</div>
+    <div class="invoice-items" id="ty-invoice-items"></div>
+    <div class="invoice-grand">
+      <span>Total Paid</span>
+      <span id="ty-total">₹0</span>
+    </div>
+  </div>
+  <button class="btn btn-outline" style="color:white; border-color:rgba(255,255,255,0.3); font-size:14px;" onclick="closeThankYou()">Return to Dashboard</button>
+</div>
+
+<script>
+// ===== STATE =====
+const state = {
+  role: 'receptionist',
+  currentPanel: 'queue',
+  currentPatient: null,
+  queue: [
+    { id: 1, name: 'Meera Joshi', age: 34, gender: 'F', phone: '9870000001', complaint: 'Chronic migraine, stress', doctor: 'dr-homeo', status: 'active', isReturning: true, num: 1, visitType: 'walk-in', vitals: {bp:'124/82', temp:'98.4', pulse:'78', weight:'62'}, history: [{date:'14 Mar 2026', chief:'Migraine & fatigue', rx:'Natrum Mur 200C, 4 doses'},{date:'20 Jan 2026',chief:'Anxiety, sleeplessness',rx:'Ignatia 30C, Coffea 30C'}] },
+    { id: 2, name: 'Ankit Rawat', age: 28, gender: 'M', phone: '9870000002', complaint: 'Acute fever, body ache', doctor: 'dr-allo', status: 'waiting', isReturning: false, num: 2, visitType: 'walk-in', vitals: {}, history: [] },
+    { id: 3, name: 'Sunita Devi', age: 52, gender: 'F', phone: '9870000003', complaint: 'Knee pain, follow-up', doctor: 'dr-homeo', status: 'waiting', isReturning: true, num: 3, visitType: 'follow-up', vitals: {}, history: [{date:'1 May 2026',chief:'Knee arthritis',rx:'Rhus Tox 200C, Calcarea Carb 30C'}] },
+    { id: 4, name: 'Ramesh Patil', age: 45, gender: 'M', phone: '9870000004', complaint: 'Hypertension checkup', doctor: 'dr-allo', status: 'waiting', isReturning: true, num: 4, visitType: 'appointment', vitals: {}, history: [{date:'10 Apr 2026',chief:'High BP',rx:'Amlodipine 5mg, Telma 40mg'}] },
+  ],
+  followUps: [
+    { id: 10, name: 'Pradeep Kumar', date: '12 May', reason: 'Homeopathy 2nd follow-up — Psoriasis', phone: '9800000010' },
+    { id: 11, name: 'Lakshmi Nair', date: '14 May', reason: 'Allopathy — Diabetes management review', phone: '9800000011' },
+    { id: 12, name: 'Vijay Sharma', date: '17 May', reason: 'Homeopathy — Hairfall constitutional', phone: '9800000012' },
+  ],
+  prescriptions: {
+    homeo: [{ remedy: 'Natrum Muriaticum', potency: '200C', dose: '4 pills', frequency: 'OD' }],
+    allo: [{ drug: 'Paracetamol', strength: '500mg', dose: '1 tab', frequency: 'TID', duration: '5 days' }]
+  },
+  rxTab: 'chief',
+  currentRxType: 'homeo',
+  invoiceCounter: 1042,
+  popupPending: null,
+};
+
+const userProfiles = {
+  'receptionist': { name: 'Priya Sharma', initials: 'PS', role: 'Front Desk Receptionist', nav: ['queue', 'billing', 'followups', 'patients'] },
+  'doctor-homeo': { name: 'Dr. Anjali Verma', initials: 'AV', role: 'Homeopathy Physician', nav: ['consultation', 'myqueue', 'patients'] },
+  'doctor-allo': { name: 'Dr. Suresh Kumar', initials: 'SK', role: 'Allopathy Physician', nav: ['consultation', 'myqueue', 'patients'] },
+  'admin': { name: 'Admin User', initials: 'AD', role: 'Clinic Administrator', nav: ['queue', 'billing', 'followups', 'patients', 'reports'] },
+};
+
+const navLabels = {
+  queue: ['📋', "Today's Queue"],
+  billing: ['💳', 'Billing'],
+  followups: ['🔔', 'Follow-ups'],
+  patients: ['👥', 'Patients'],
+  consultation: ['🩺', 'Consultation'],
+  myqueue: ['📋', 'My Queue'],
+  reports: ['📊', 'Reports'],
+};
+
+// ===== LOGIN =====
+let selectedRole = 'receptionist';
+
+function selectRole(role) {
+  selectedRole = role;
+  document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`[data-role="${role}"]`).classList.add('active');
+}
+
+function doLogin() {
+  state.role = selectedRole;
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  initApp();
+}
+
+function logout() {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+
+// ===== INIT =====
+function initApp() {
+  const profile = userProfiles[state.role];
+  document.getElementById('user-display-name').textContent = profile.name;
+  document.getElementById('user-display-role').textContent = profile.role;
+  document.getElementById('user-avatar-initials').textContent = profile.initials;
+
+  // Build nav
+  const nav = document.getElementById('main-nav');
+  nav.innerHTML = '';
+  profile.nav.forEach((key, i) => {
+    const [icon, label] = navLabels[key];
+    const el = document.createElement('div');
+    el.className = 'nav-item' + (i === 0 ? ' active' : '');
+    el.innerHTML = `${icon} ${label}`;
+    el.onclick = () => switchPanel(key, el);
+    nav.appendChild(el);
+  });
+
+  // Set default panel
+  const defaultPanel = profile.nav[0];
+  state.currentPanel = defaultPanel;
+  renderPanel(defaultPanel);
+  startClock();
+}
+
+function switchPanel(key, el) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  state.currentPanel = key;
+  renderPanel(key);
+}
+
+function startClock() {
+  function tick() {
+    const now = new Date();
+    document.getElementById('clock').textContent = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  }
+  tick();
+  setInterval(tick, 30000);
+}
+
+// ===== RENDER PANEL =====
+function renderPanel(panel) {
+  const mc = document.getElementById('main-content');
+  switch(panel) {
+    case 'queue': mc.innerHTML = renderQueuePanel(); break;
+    case 'billing': mc.innerHTML = renderBillingPanel(); break;
+    case 'followups': mc.innerHTML = renderFollowupsPanel(); break;
+    case 'patients': mc.innerHTML = renderPatientsPanel(); break;
+    case 'consultation': mc.innerHTML = renderConsultationPanel(); break;
+    case 'myqueue': mc.innerHTML = renderMyQueuePanel(); break;
+    case 'reports': mc.innerHTML = renderReportsPanel(); break;
+  }
+}
+
+// ===== QUEUE PANEL (Receptionist) =====
+function renderQueuePanel() {
+  const total = state.queue.length;
+  const active = state.queue.filter(p => p.status === 'active').length;
+  const done = state.queue.filter(p => p.status === 'done').length;
+  const waiting = state.queue.filter(p => p.status === 'waiting').length;
+
+  const queueItems = state.queue.map(p => {
+    const statusClass = p.status === 'active' ? 'active-patient' : p.status === 'done' ? 'done' : 'waiting';
+    const badge = p.status === 'active' ? '<span class="queue-badge badge-active">● In Consultation</span>' :
+                  p.status === 'done' ? '<span class="queue-badge badge-done">✓ Done</span>' :
+                  '<span class="queue-badge badge-waiting">○ Waiting</span>';
+    const returnBadge = p.isReturning ? '<span class="queue-badge badge-returning" style="margin-left:6px">Returning</span>' : '<span class="queue-badge badge-new" style="margin-left:6px">New</span>';
+    const docLabel = p.doctor === 'dr-homeo' ? '🌱 Dr. Anjali' : '🩺 Dr. Suresh';
+    return `<div class="queue-item ${statusClass}" onclick="selectQueuePatient(${p.id})">
+      <div class="queue-num">${p.num}</div>
+      <div class="queue-info">
+        <div class="d-flex align-center gap-8">
+          <div class="queue-name">${p.name}</div>
+          ${returnBadge}
+        </div>
+        <div class="queue-meta">${p.age}yr ${p.gender} · ${p.complaint} · ${docLabel} · ${p.visitType}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">${badge}
+        ${p.status === 'waiting' ? `<button class="btn btn-sage btn-sm" onclick="event.stopPropagation();callNext(${p.id})">Call In →</button>` : ''}
+        ${p.status === 'done' ? `<button class="btn btn-earth btn-sm" onclick="event.stopPropagation();openBillingFor(${p.id})">Bill Now</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const progress = total > 0 ? Math.round((done / total) * 100) : 0;
+
+  return `
+  <div class="section-header">
+    <div>
+      <div class="section-title">Today's Queue</div>
+      <div class="section-sub">Sunday, 10 May 2026 · ${total} patients registered</div>
+    </div>
+    <button class="btn btn-sage" onclick="openModal('add-patient-modal')">+ Register Walk-in</button>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon">👥</div>
+      <div class="stat-num">${total}</div>
+      <div class="stat-label">Total Today</div>
+    </div>
+    <div class="stat-card earth">
+      <div class="stat-icon">⚡</div>
+      <div class="stat-num">${active}</div>
+      <div class="stat-label">In Consultation</div>
+    </div>
+    <div class="stat-card amber">
+      <div class="stat-icon">⏳</div>
+      <div class="stat-num">${waiting}</div>
+      <div class="stat-label">Waiting</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-icon">✓</div>
+      <div class="stat-num">${done}</div>
+      <div class="stat-label">Completed</div>
+    </div>
+  </div>
+
+  <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <span style="font-size:13px;font-weight:500;color:var(--ink-mid);">Day Progress</span>
+      <span style="font-size:13px;color:var(--sage);font-weight:600;">${progress}% completed</span>
+    </div>
+    <div class="queue-progress"><div class="queue-progress-bar" style="width:${progress}%"></div></div>
+  </div>
+
+  <div class="queue-grid">
+    <div>
+      <div style="font-size:12px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">Queue — ${state.queue.length} patients</div>
+      <div class="queue-list">
+        ${queueItems || '<div class="empty-state"><div class="empty-icon">🌿</div><h3>Queue is empty</h3><p>No patients registered yet for today</p></div>'}
+      </div>
+    </div>
+    <div>
+      <div class="add-patient-card card">
+        <div class="card-header">
+          <div class="card-title">⚡ Quick Register</div>
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label-sm">Patient Name</label>
+            <input type="text" class="form-input-sm" id="q-name" placeholder="Full name">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label-sm">Phone</label>
+              <input type="tel" class="form-input-sm" id="q-phone" placeholder="10-digit">
+            </div>
+            <div class="form-group">
+              <label class="form-label-sm">Age</label>
+              <input type="number" class="form-input-sm" id="q-age" placeholder="—">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label-sm">Complaint</label>
+            <input type="text" class="form-input-sm" id="q-complaint" placeholder="Brief reason for visit">
+          </div>
+          <div class="form-group">
+            <label class="form-label-sm">Doctor</label>
+            <select class="form-input-sm" id="q-doctor">
+              <option value="dr-homeo">Dr. Anjali Verma (Homeo)</option>
+              <option value="dr-allo">Dr. Suresh Kumar (Allo)</option>
+            </select>
+          </div>
+          <button class="btn btn-sage" style="width:100%;justify-content:center;" onclick="quickAddPatient()">Add to Queue →</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ===== BILLING PANEL =====
+function renderBillingPanel() {
+  const billable = state.queue.filter(p => p.status === 'done');
+  const rows = billable.map(p => `
+    <tr>
+      <td><strong>${p.name}</strong></td>
+      <td>${p.age}yr ${p.gender}</td>
+      <td>${p.visitType}</td>
+      <td>${p.doctor === 'dr-homeo' ? '🌱 Dr. Anjali' : '🩺 Dr. Suresh'}</td>
+      <td><span class="queue-badge badge-done">Done</span></td>
+      <td><button class="btn btn-sage btn-sm" onclick="openBillingFor(${p.id})">Generate Bill</button></td>
+    </tr>`).join('');
+
+  return `
+  <div class="section-header">
+    <div>
+      <div class="section-title">Billing & Payments</div>
+      <div class="section-sub">${billable.length} patient(s) pending payment</div>
+    </div>
+  </div>
+  <div class="billing-grid">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Pending Bills</div></div>
+      <div style="overflow:auto;">
+        ${billable.length > 0 ? `<table class="billing-table">
+          <thead><tr><th>Patient</th><th>Age/Sex</th><th>Type</th><th>Doctor</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>` : `<div class="empty-state"><div class="empty-icon">💳</div><h3>All clear!</h3><p>No pending bills at this time</p></div>`}
+      </div>
+    </div>
+    <div>
+      <div class="card" style="padding:20px;">
+        <div class="card-title" style="margin-bottom:16px;">💰 Today's Revenue</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="info-row" style="padding:0"><div class="info-key">Consultation fees</div><div class="info-val">₹2,400</div></div>
+          <div class="info-row" style="padding:0"><div class="info-key">Medicine charges</div><div class="info-val">₹850</div></div>
+          <div class="info-row" style="padding:0"><div class="info-key">Diagnostics</div><div class="info-val">₹0</div></div>
+          <hr class="divider" style="margin:4px 0">
+          <div style="display:flex;justify-content:space-between;font-weight:600;font-size:18px;color:var(--sage)">
+            <span>Total</span><span>₹3,250</span>
+          </div>
+        </div>
+        <hr class="divider">
+        <div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;">Payment methods</div>
+        <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;">
+          <div style="display:flex;justify-content:space-between"><span>Cash</span><span>₹1,800</span></div>
+          <div style="display:flex;justify-content:space-between"><span>UPI</span><span>₹1,450</span></div>
+          <div style="display:flex;justify-content:space-between"><span>Card</span><span>₹0</span></div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ===== FOLLOWUPS PANEL =====
+function renderFollowupsPanel() {
+  const items = state.followUps.map(f => `
+    <div class="followup-item">
+      <div class="followup-date-badge">
+        <div class="fu-day">${f.date.split(' ')[0]}</div>
+        <div class="fu-month">${f.date.split(' ')[1]}</div>
+      </div>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:600">${f.name}</div>
+        <div class="text-muted mt-4">${f.reason}</div>
+        <div class="text-muted" style="margin-top:4px">📱 ${f.phone}</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-outline btn-sm" onclick="sendReminder(${f.id})">📱 Remind</button>
+        <button class="btn btn-sage btn-sm" onclick="checkInFollowup(${f.id})">Check In</button>
+      </div>
+    </div>`).join('');
+
+  return `
+  <div class="section-header">
+    <div>
+      <div class="section-title">Follow-up Schedule</div>
+      <div class="section-sub">Upcoming return visits — ${state.followUps.length} this week</div>
+    </div>
+  </div>
+  <div style="max-width:720px">
+    ${items || '<div class="empty-state"><div class="empty-icon">🔔</div><h3>No follow-ups scheduled</h3></div>'}
+  </div>`;
+}
+
+// ===== PATIENTS PANEL =====
+function renderPatientsPanel() {
+  const all = state.queue;
+  return `
+  <div class="section-header">
+    <div>
+      <div class="section-title">Patient Records</div>
+      <div class="section-sub">Search and view patient history</div>
+    </div>
+    <input type="text" class="form-input-sm" placeholder="🔍 Search patient..." style="width:240px" oninput="filterPatients(this.value)">
+  </div>
+  <div id="patient-records-list">
+    ${all.map(p => `
+    <div class="doctor-queue-item" style="margin-bottom:8px">
+      <div class="dq-avatar">${p.name[0]}</div>
+      <div class="dq-info">
+        <div class="dq-name">${p.name}</div>
+        <div class="dq-meta">${p.age}yr ${p.gender} · ${p.phone} · ${p.history.length} visit(s)</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        ${p.isReturning ? '<span class="queue-badge badge-returning">Returning</span>' : '<span class="queue-badge badge-new">New</span>'}
+        <button class="btn btn-outline btn-sm" onclick="showPatientHistory(${p.id})">View History</button>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
+// ===== CONSULTATION PANEL (Doctor) =====
+function renderConsultationPanel() {
+  const docType = state.role === 'doctor-homeo' ? 'homeo' : 'allo';
+  const myPatients = state.queue.filter(p => p.doctor === (docType === 'homeo' ? 'dr-homeo' : 'dr-allo'));
+  const activePatient = myPatients.find(p => p.status === 'active');
+
+  if (!activePatient) {
+    return `
+    <div class="section-header">
+      <div>
+        <div class="section-title">Consultation Room</div>
+        <div class="section-sub">
+          ${docType === 'homeo' ? '<span class="doctor-type-tag tag-homeo">🌱 Homeopathy</span>' : '<span class="doctor-type-tag tag-allopathy">🩺 Allopathy</span>'}
+          &nbsp;· Dr. ${docType === 'homeo' ? 'Anjali Verma' : 'Suresh Kumar'}
+        </div>
+      </div>
+    </div>
+    <div class="empty-state" style="margin-top:60px">
+      <div class="empty-icon">🌿</div>
+      <h3>No patient in room</h3>
+      <p>Waiting for receptionist to send next patient in</p>
+      <p style="margin-top:16px;font-size:12px;color:var(--ink-soft)">You'll be notified automatically</p>
+    </div>`;
+  }
+
+  state.currentPatient = activePatient;
+  const historyItems = activePatient.history.length > 0
+    ? activePatient.history.map(h => `
+      <div class="timeline-item">
+        <div class="timeline-dot">📋</div>
+        <div class="timeline-content">
+          <div class="timeline-date">${h.date}</div>
+          <div class="timeline-chief">${h.chief}</div>
+          <div class="timeline-rx">Rx: ${h.rx}</div>
+        </div>
+      </div>`).join('')
+    : '<div class="text-muted text-sm">No previous visits at this clinic</div>';
+
+  const rxContent = docType === 'homeo' ? renderHomeoRx() : renderAllopathyRx();
+
+  const vitalsHtml = docType === 'allo' ? `
+    <div class="card mb-16">
+      <div class="card-header"><div class="card-title">Vitals</div></div>
+      <div class="card-body">
+        <div class="vital-grid">
+          <div class="form-group" style="margin:0">
+            <label class="form-label-sm">BP (mmHg)</label>
+            <div class="vital-input-wrap">
+              <input type="text" class="form-input-sm" value="${activePatient.vitals.bp||''}" placeholder="120/80">
+            </div>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label-sm">Temp (°F)</label>
+            <input type="text" class="form-input-sm" value="${activePatient.vitals.temp||''}" placeholder="98.6">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label-sm">Pulse (/min)</label>
+            <input type="text" class="form-input-sm" value="${activePatient.vitals.pulse||''}" placeholder="72">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label-sm">Weight (kg)</label>
+            <input type="text" class="form-input-sm" value="${activePatient.vitals.weight||''}" placeholder="70">
+          </div>
+        </div>
+      </div>
+    </div>` : '';
+
+  return `
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <div>
+      <div class="section-title">Consultation Room</div>
+      <div class="section-sub">
+        ${docType === 'homeo' ? '<span class="doctor-type-tag tag-homeo">🌱 Homeopathy</span>' : '<span class="doctor-type-tag tag-allopathy">🩺 Allopathy</span>'}
+      </div>
+    </div>
+    <button class="btn btn-sage" onclick="finishConsultation()">✓ Complete & Send Prescription</button>
+  </div>
+
+  <div class="patient-screen">
+    <div class="patient-sidebar">
+      <div class="patient-hero">
+        <div class="patient-avatar-large">${activePatient.name[0]}</div>
+        <div class="patient-name-large">${activePatient.name}</div>
+        <div class="patient-meta-row">${activePatient.age} yrs · ${activePatient.gender === 'M' ? 'Male' : 'Female'}</div>
+        <div class="patient-meta-row" style="margin-top:4px">📱 ${activePatient.phone}</div>
+        <div>
+          ${activePatient.isReturning
+            ? `<div class="history-flag">↩ Returning · ${activePatient.history.length} prior visit(s)</div>`
+            : `<div class="history-flag new-patient">★ First visit at clinic</div>`}
+        </div>
+      </div>
+
+      <div class="info-block">
+        <div class="info-block-title">Visit Details</div>
+        <div class="info-row"><div class="info-key">Chief Complaint</div><div class="info-val">${activePatient.complaint}</div></div>
+        <div class="info-row"><div class="info-key">Visit Type</div><div class="info-val">${activePatient.visitType}</div></div>
+        <div class="info-row"><div class="info-key">Token #</div><div class="info-val">#${activePatient.num}</div></div>
+      </div>
+
+      <div class="info-block">
+        <div class="info-block-title">Visit History (${activePatient.history.length})</div>
+        <div style="padding:14px;">
+          <div class="timeline">
+            ${historyItems}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="prescription-area">
+      ${vitalsHtml}
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📝 Prescription Pad</div>
+          <div class="rx-tabs" style="width:auto">
+            <button class="rx-tab active" id="tab-chief" onclick="switchRxTab('chief')">Chief Complaint</button>
+            <button class="rx-tab" id="tab-rx" onclick="switchRxTab('rx')">Medicines</button>
+            <button class="rx-tab" id="tab-advice" onclick="switchRxTab('advice')">Advice & Follow-up</button>
+          </div>
+        </div>
+        <div class="card-body">
+
+          <div class="rx-section active" id="rx-chief">
+            <div class="form-group">
+              <label class="form-label-sm">Chief Complaint</label>
+              <textarea class="form-textarea" id="rx-complaint-text" placeholder="Patient's primary complaint in detail...">${activePatient.complaint}</textarea>
+            </div>
+            ${docType === 'homeo' ? `
+            <div class="form-group">
+              <label class="form-label-sm">Constitutional Symptoms / Modalities</label>
+              <textarea class="form-textarea" id="rx-constitutional" placeholder="Mental generals, physical generals, modalities (< heat, > cold, etc.), desires & aversions..."></textarea>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label-sm">Miasm</label>
+                <select class="form-input-sm">
+                  <option>— Select —</option>
+                  <option>Psora</option>
+                  <option>Sycosis</option>
+                  <option>Syphilis</option>
+                  <option>Tubercular</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label-sm">Thermal Reaction</label>
+                <select class="form-input-sm">
+                  <option>— Select —</option>
+                  <option>Hot patient</option>
+                  <option>Chilly patient</option>
+                  <option>Ambi-thermal</option>
+                </select>
+              </div>
+            </div>` : `
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label-sm">Diagnosis / ICD</label>
+                <input type="text" class="form-input-sm" placeholder="e.g. Viral fever, Hypertension">
+              </div>
+              <div class="form-group">
+                <label class="form-label-sm">Lab Tests Ordered</label>
+                <input type="text" class="form-input-sm" placeholder="CBC, LFT, etc.">
+              </div>
+            </div>`}
+          </div>
+
+          <div class="rx-section" id="rx-rx">
+            ${rxContent}
+          </div>
+
+          <div class="rx-section" id="rx-advice">
+            <div class="form-group">
+              <label class="form-label-sm">Diet & Lifestyle Advice</label>
+              <textarea class="form-textarea" placeholder="${docType === 'homeo' ? 'Avoid coffee, camphor, mint. Light diet. Avoid suppressive treatments.' : 'Low sodium diet. Regular exercise. Avoid alcohol.'}"></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label-sm">Follow-up Date</label>
+              <input type="date" class="form-input-sm" id="followup-date">
+            </div>
+            <div class="form-group">
+              <label class="form-label-sm">Follow-up Notes</label>
+              <textarea class="form-textarea" placeholder="What to monitor or reassess at next visit..."></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label-sm">Prognosis / Notes to Patient</label>
+              <textarea class="form-textarea" placeholder="Expected timeline, what to expect during treatment..."></textarea>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderHomeoRx() {
+  const rows = state.prescriptions.homeo.map((r, i) => `
+    <div class="remedy-row" id="homeo-row-${i}">
+      <div>
+        <label class="form-label-sm">Remedy</label>
+        <input type="text" class="form-input-sm" value="${r.remedy}" placeholder="e.g. Sulphur, Natrum Mur">
+      </div>
+      <div>
+        <label class="form-label-sm">Potency</label>
+        <select class="form-input-sm">
+          <option ${r.potency==='6C'?'selected':''}>6C</option>
+          <option ${r.potency==='30C'?'selected':''}>30C</option>
+          <option ${r.potency==='200C'?'selected':''}>200C</option>
+          <option ${r.potency==='1M'?'selected':''}>1M</option>
+          <option ${r.potency==='10M'?'selected':''}>10M</option>
+          <option ${r.potency==='LM1'?'selected':''}>LM1</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label-sm">Frequency</label>
+        <select class="form-input-sm">
+          <option>OD</option><option>BD</option><option>TID</option><option>SOS</option><option>Weekly</option>
+        </select>
+      </div>
+      <button class="remove-btn" onclick="removeHomeoRow(${i})">×</button>
+    </div>`).join('');
+
+  return `
+    <div id="homeo-rows">${rows}</div>
+    <button class="add-med-btn" onclick="addHomeoRow()">＋ Add Remedy</button>
+    <hr class="divider">
+    <div class="form-group">
+      <label class="form-label-sm">Intercurrent / Support Remedy</label>
+      <input type="text" class="form-input-sm" placeholder="e.g. Thuja 200C (intercurrent)">
+    </div>
+    <div class="form-group">
+      <label class="form-label-sm">Mother Tincture / External Application</label>
+      <input type="text" class="form-input-sm" placeholder="e.g. Calendula Q for local application">
+    </div>
+    <div class="form-group">
+      <label class="form-label-sm">Antidote Warning</label>
+      <textarea class="form-textarea" style="min-height:50px" placeholder="Avoid coffee, camphor, strong perfumes..."></textarea>
+    </div>`;
+}
+
+function renderAllopathyRx() {
+  const rows = state.prescriptions.allo.map((r, i) => `
+    <div class="drug-row" id="allo-row-${i}">
+      <div>
+        <label class="form-label-sm">Drug Name</label>
+        <input type="text" class="form-input-sm" value="${r.drug}" placeholder="e.g. Amoxicillin">
+      </div>
+      <div>
+        <label class="form-label-sm">Strength</label>
+        <input type="text" class="form-input-sm" value="${r.strength}" placeholder="500mg">
+      </div>
+      <div>
+        <label class="form-label-sm">Frequency</label>
+        <select class="form-input-sm">
+          <option>OD</option><option>BD</option><option>TID</option><option>QID</option><option>SOS</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label-sm">Duration</label>
+        <input type="text" class="form-input-sm" value="${r.duration}" placeholder="5 days">
+      </div>
+      <button class="remove-btn" onclick="removeAlloRow(${i})">×</button>
+    </div>`).join('');
+
+  return `
+    <div id="allo-rows">${rows}</div>
+    <button class="add-med-btn" onclick="addAlloRow()">＋ Add Medicine</button>
+    <hr class="divider">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label-sm">Before / After Food</label>
+        <select class="form-input-sm">
+          <option>After food</option>
+          <option>Before food</option>
+          <option>With food</option>
+          <option>Empty stomach</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label-sm">Special Instructions</label>
+        <input type="text" class="form-input-sm" placeholder="e.g. Avoid dairy, No driving">
+      </div>
+    </div>`;
+}
+
+// ===== MY QUEUE (Doctor) =====
+function renderMyQueuePanel() {
+  const docType = state.role === 'doctor-homeo' ? 'dr-homeo' : 'dr-allo';
+  const myPatients = state.queue.filter(p => p.doctor === docType);
+
+  return `
+  <div class="section-header">
+    <div>
+      <div class="section-title">My Queue</div>
+      <div class="section-sub">${myPatients.length} patients assigned to you today</div>
+    </div>
+  </div>
+  ${myPatients.map(p => `
+    <div class="doctor-queue-item ${p.status === 'active' ? 'current' : ''}">
+      <div class="dq-avatar">${p.name[0]}</div>
+      <div class="dq-info">
+        <div class="d-flex align-center gap-8">
+          <div class="dq-name">${p.name}</div>
+          ${p.isReturning ? '<span class="queue-badge badge-returning">Returning</span>' : '<span class="queue-badge badge-new">New</span>'}
+        </div>
+        <div class="dq-meta">Token #${p.num} · ${p.complaint} · ${p.visitType}</div>
+      </div>
+      <div>
+        ${p.status === 'active' ? '<span class="queue-badge badge-active">● In Room</span>' :
+          p.status === 'done' ? '<span class="queue-badge badge-done">✓ Done</span>' :
+          '<span class="queue-badge badge-waiting">Waiting</span>'}
+      </div>
+    </div>`).join('') || '<div class="empty-state"><div class="empty-icon">🌿</div><h3>No patients yet</h3></div>'}`;
+}
+
+// ===== REPORTS PANEL =====
+function renderReportsPanel() {
+  return `
+  <div class="section-header">
+    <div>
+      <div class="section-title">Reports & Analytics</div>
+      <div class="section-sub">Clinic performance overview</div>
+    </div>
+  </div>
+  <div class="stats-row" style="grid-template-columns:repeat(3,1fr)">
+    <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-num">247</div><div class="stat-label">Total Patients (May)</div></div>
+    <div class="stat-card earth"><div class="stat-icon">💰</div><div class="stat-num">₹86K</div><div class="stat-label">Revenue (May)</div></div>
+    <div class="stat-card blue"><div class="stat-icon">🔄</div><div class="stat-num">68%</div><div class="stat-label">Return Rate</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div class="card card-body">
+      <div class="card-title mb-16">Top Complaints</div>
+      ${[['Fever / Infections','34%'],['Skin conditions','22%'],['Joint pain','18%'],['Digestive issues','14%'],['Others','12%']].map(([label, pct]) => `
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <div style="flex:1;font-size:13px">${label}</div>
+          <div style="width:120px;background:var(--border);border-radius:4px;height:6px;overflow:hidden">
+            <div style="width:${pct};background:var(--sage);height:100%;border-radius:4px"></div>
+          </div>
+          <div style="font-size:12px;color:var(--ink-soft);width:32px;text-align:right">${pct}</div>
+        </div>`).join('')}
+    </div>
+    <div class="card card-body">
+      <div class="card-title mb-16">Doctor-wise Load</div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><span>🌱 Dr. Anjali (Homeo)</span><span style="color:var(--sage)">142 patients</span></div>
+          <div style="background:var(--border);border-radius:4px;height:8px;overflow:hidden"><div style="width:62%;background:var(--sage);height:100%;border-radius:4px"></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><span>🩺 Dr. Suresh (Allo)</span><span style="color:var(--blue)">105 patients</span></div>
+          <div style="background:var(--border);border-radius:4px;height:8px;overflow:hidden"><div style="width:45%;background:var(--blue);height:100%;border-radius:4px"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ===== INTERACTIONS =====
+function selectQueuePatient(id) {
+  const p = state.queue.find(q => q.id === id);
+  if (!p) return;
+  showToast(`👤 ${p.name} · Token #${p.num} · ${p.visitType}`, 'info');
+}
+
+function callNext(id) {
+  const p = state.queue.find(q => q.id === id);
+  if (!p) return;
+
+  // Set as active
+  state.queue.forEach(q => { if (q.status === 'active') q.status = 'waiting'; });
+  p.status = 'active';
+
+  // Notify doctor via popup
+  state.popupPending = p;
+  showNextPatientPopup(p);
+  showToast(`📢 ${p.name} sent to consultation room`, 'success');
+  renderPanel(state.currentPanel);
+}
+
+function showNextPatientPopup(p) {
+  document.getElementById('popup-patient-name').textContent = p.name;
+  document.getElementById('popup-patient-meta').textContent = `${p.age}yr · ${p.complaint} · Token #${p.num}`;
+  const flagEl = document.getElementById('popup-patient-flag');
+  if (p.isReturning) {
+    flagEl.className = 'popup-flag';
+    flagEl.style.background = 'rgba(139,111,71,0.3)';
+    flagEl.style.color = '#F0C060';
+    flagEl.textContent = `↩ Returning patient · ${p.history.length} prior visit(s)`;
+  } else {
+    flagEl.className = 'popup-flag';
+    flagEl.style.background = 'rgba(92,122,90,0.3)';
+    flagEl.style.color = 'var(--sage-light)';
+    flagEl.textContent = '★ First visit at this clinic';
+  }
+  document.getElementById('next-patient-popup').style.display = 'block';
+}
+
+function acceptNextPatient() {
+  document.getElementById('next-patient-popup').style.display = 'none';
+  showToast('✓ Consultation started', 'success');
+}
+
+function dismissPopup() {
+  document.getElementById('next-patient-popup').style.display = 'none';
+  showToast('⏳ Acknowledged — will call shortly', 'info');
+}
+
+function finishConsultation() {
+  const p = state.queue.find(q => q.status === 'active');
+  if (!p) return;
+  p.status = 'done';
+  showToast(`✓ Prescription sent · ${p.name} directed to billing`, 'success');
+  renderPanel(state.currentPanel);
+}
+
+function openBillingFor(id) {
+  const p = state.queue.find(q => q.id === id);
+  if (!p) return;
+  state.currentPatient = p;
+
+  document.getElementById('billing-patient-name-display').textContent = `${p.name} · Token #${p.num}`;
+
+  const consultFee = p.doctor === 'dr-homeo' ? 600 : 800;
+  const medFee = p.doctor === 'dr-homeo' ? 350 : 150;
+  const items = [
+    { label: 'Consultation Fee', amount: consultFee },
+    { label: 'Medicine Charges', amount: medFee },
+  ];
+  const total = items.reduce((a, b) => a + b.amount, 0);
+
+  document.getElementById('billing-items-list').innerHTML = items.map(i => `
+    <div class="invoice-line">
+      <span>${i.label}</span>
+      <span>₹${i.amount}</span>
+    </div>`).join('');
+
+  document.getElementById('billing-total').textContent = `₹${total}`;
+  document.getElementById('amount-received').value = total;
+
+  openModal('billing-modal');
+}
+
+function processPayment() {
+  const p = state.currentPatient;
+  if (!p) return;
+
+  closeModal('billing-modal');
+
+  const consultFee = p.doctor === 'dr-homeo' ? 600 : 800;
+  const medFee = p.doctor === 'dr-homeo' ? 350 : 150;
+  const total = consultFee + medFee;
+  const invNum = `INV-2026-${String(state.invoiceCounter++).padStart(4, '0')}`;
+
+  // Thank you screen
+  document.getElementById('ty-patient-name').textContent = `Thank you, ${p.name.split(' ')[0]}!`;
+  document.getElementById('ty-invoice-num').textContent = invNum;
+  document.getElementById('ty-invoice-items').innerHTML = `
+    <div class="invoice-item-row"><span>Consultation Fee</span><span>₹${consultFee}</span></div>
+    <div class="invoice-item-row"><span>Medicine Charges</span><span>₹${medFee}</span></div>`;
+  document.getElementById('ty-total').textContent = `₹${total}`;
+
+  // Add to follow-up
+  const fuDate = new Date();
+  fuDate.setDate(fuDate.getDate() + 7);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  state.followUps.push({ id: Date.now(), name: p.name, date: `${fuDate.getDate()} ${months[fuDate.getMonth()]}`, reason: `${p.doctor === 'dr-homeo' ? 'Homeopathy' : 'Allopathy'} follow-up · ${p.complaint}`, phone: p.phone });
+
+  document.getElementById('thankyou-overlay').classList.add('open');
+}
+
+function closeThankYou() {
+  document.getElementById('thankyou-overlay').classList.remove('open');
+  const p = state.currentPatient;
+  if (p) {
+    state.queue = state.queue.filter(q => q.id !== p.id);
+    state.currentPatient = null;
+  }
+  renderPanel(state.currentPanel);
+  showToast('📱 Invoice sent via WhatsApp to patient', 'success');
+}
+
+function addPatient() {
+  const name = document.getElementById('new-fname').value + ' ' + document.getElementById('new-lname').value;
+  const phone = document.getElementById('new-phone').value;
+  const age = document.getElementById('new-age').value || '—';
+  const complaint = document.getElementById('new-complaint').value || 'General consultation';
+  const doctor = document.getElementById('new-doctor').value;
+  const visitType = document.getElementById('new-visit-type').value;
+
+  if (!name.trim() || name.trim() === ' ') { showToast('⚠️ Please enter patient name', 'alert'); return; }
+
+  const newNum = state.queue.length + 1;
+  state.queue.push({ id: Date.now(), name: name.trim(), age: parseInt(age)||25, gender: 'M', phone, complaint, doctor, status: 'waiting', isReturning: false, num: newNum, visitType, vitals: {}, history: [] });
+
+  closeModal('add-patient-modal');
+  showToast(`✓ ${name.trim()} added to queue · Token #${newNum}`, 'success');
+  renderPanel(state.currentPanel);
+}
+
+function quickAddPatient() {
+  const name = document.getElementById('q-name')?.value;
+  const phone = document.getElementById('q-phone')?.value;
+  const complaint = document.getElementById('q-complaint')?.value || 'General consultation';
+  const doctor = document.getElementById('q-doctor')?.value;
+  const age = parseInt(document.getElementById('q-age')?.value) || 30;
+
+  if (!name) { showToast('⚠️ Enter patient name', 'alert'); return; }
+
+  const newNum = state.queue.length + 1;
+  state.queue.push({ id: Date.now(), name, age, gender: 'M', phone, complaint, doctor, status: 'waiting', isReturning: false, num: newNum, visitType: 'walk-in', vitals: {}, history: [] });
+
+  showToast(`✓ ${name} registered · Token #${newNum}`, 'success');
+  renderPanel(state.currentPanel);
+}
+
+function switchRxTab(tab) {
+  document.querySelectorAll('.rx-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.rx-section').forEach(s => s.classList.remove('active'));
+  document.getElementById('tab-' + tab)?.classList.add('active');
+  document.getElementById('rx-' + tab)?.classList.add('active');
+}
+
+function addHomeoRow() {
+  state.prescriptions.homeo.push({ remedy: '', potency: '30C', dose: '4 pills', frequency: 'BD' });
+  renderPanel(state.currentPanel);
+  setTimeout(() => switchRxTab('rx'), 50);
+}
+
+function removeHomeoRow(i) {
+  state.prescriptions.homeo.splice(i, 1);
+  renderPanel(state.currentPanel);
+  setTimeout(() => switchRxTab('rx'), 50);
+}
+
+function addAlloRow() {
+  state.prescriptions.allo.push({ drug: '', strength: '', dose: '1 tab', frequency: 'OD', duration: '5 days' });
+  renderPanel(state.currentPanel);
+  setTimeout(() => switchRxTab('rx'), 50);
+}
+
+function removeAlloRow(i) {
+  state.prescriptions.allo.splice(i, 1);
+  renderPanel(state.currentPanel);
+  setTimeout(() => switchRxTab('rx'), 50);
+}
+
+function sendReminder(id) {
+  const f = state.followUps.find(fu => fu.id === id);
+  if (f) showToast(`📱 WhatsApp reminder sent to ${f.name}`, 'success');
+}
+
+function checkInFollowup(id) {
+  const f = state.followUps.find(fu => fu.id === id);
+  if (!f) return;
+  const newNum = state.queue.length + 1;
+  state.queue.push({ id: Date.now(), name: f.name, age: 35, gender: 'M', phone: f.phone, complaint: f.reason, doctor: 'dr-homeo', status: 'waiting', isReturning: true, num: newNum, visitType: 'follow-up', vitals: {}, history: [{ date: '1 May 2026', chief: 'Previous visit', rx: 'As prescribed' }] });
+  state.followUps = state.followUps.filter(fu => fu.id !== id);
+  showToast(`✓ ${f.name} added to queue · Token #${newNum}`, 'success');
+  renderPanel(state.currentPanel);
+}
+
+function showPatientHistory(id) {
+  const p = state.queue.find(q => q.id === id);
+  if (!p) return;
+  showToast(`👤 ${p.name} · ${p.history.length} visit(s) on record`, 'info');
+}
+
+// ===== MODAL UTILS =====
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+});
+
+// ===== TOAST =====
+function showToast(msg, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type === 'alert' ? 'toast-alert' : type === 'success' ? 'toast-success' : ''}`;
+  toast.innerHTML = `<span>${msg}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.animation = 'fade-out 0.4s ease forwards';
+    setTimeout(() => toast.remove(), 400);
+  }, 3500);
+}
+
+// ===== INIT CLOCK =====
+function startClock() {
+  function tick() {
+    const el = document.getElementById('clock');
+    if (el) el.textContent = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  }
+  tick();
+  setInterval(tick, 10000);
+}
+</script>
+</body>
+</html>
