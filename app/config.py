@@ -1,28 +1,42 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+from dotenv import load_dotenv
+
+# Load .env file
+load_dotenv()
 
 
 class Settings(BaseSettings):
 
-    # ── App ───────────────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────
+    # APP
+    # ─────────────────────────────────────────
     APP_NAME: str = "Vennova Clinic Growth Engine"
     DEBUG: bool = False
     PORT: int = 8000
     ENVIRONMENT: str = "production"
 
-    # ── Database ──────────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────
+    # DATABASE
+    # ─────────────────────────────────────────
     DATABASE_URL: str
 
-    # ── Supabase ──────────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────
+    # SUPABASE
+    # ─────────────────────────────────────────
     SUPABASE_URL: str = ""
-    SUPABASE_SERVICE_KEY: str = ""
+    SUPABASE_KEY: str = ""
 
-    # ── Auth ──────────────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────
+    # AUTH
+    # ─────────────────────────────────────────
     JWT_SECRET: str
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 60
 
-    # ── Meta WhatsApp Cloud API ───────────────────────────────────────────────
+    # ─────────────────────────────────────────
+    # WHATSAPP
+    # ─────────────────────────────────────────
     WHATSAPP_API_URL: str = "https://graph.facebook.com/v19.0"
 
     WHATSAPP_PHONE_NUMBER_ID: str = ""
@@ -30,7 +44,9 @@ class Settings(BaseSettings):
     WHATSAPP_ACCESS_TOKEN: str = ""
     WHATSAPP_VERIFY_TOKEN: str = ""
 
-    # ── CORS ──────────────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────
+    # CORS
+    # ─────────────────────────────────────────
     ALLOWED_ORIGINS: str = "*"
 
     class Config:

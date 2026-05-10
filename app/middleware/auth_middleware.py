@@ -40,9 +40,6 @@ IST = pytz.timezone("Asia/Kolkata")
 # JWT SECURITY
 # =====================================================
 
-# FastAPI automatically looks for:
-# Authorization: Bearer <token>
-
 security = HTTPBearer()
 
 
@@ -55,14 +52,13 @@ def get_current_user(
     db: Session = Depends(get_db)
 ) -> User:
     """
-    Every protected endpoint uses this.
+    Auth middleware.
 
-    Reads token →
-    finds user →
-    returns user object.
-
-    If token invalid/missing →
-    returns 401 automatically.
+    Reads JWT →
+    validates token →
+    validates user →
+    validates clinic →
+    returns authenticated user.
     """
 
     token = credentials.credentials
@@ -102,6 +98,28 @@ def get_current_user(
             detail="User not found or deactivated"
         )
 
+    # -------------------------------------------------
+    # CLINIC VALIDATION
+    # -------------------------------------------------
+
+    if not user.clinic_id:
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is not assigned to any clinic"
+        )
+
+    clinic = db.query(Clinic).filter(
+        Clinic.id == user.clinic_id
+    ).first()
+
+    if not clinic:
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Clinic not found"
+        )
+
     return user
 
 
@@ -130,7 +148,11 @@ def check_subscription(
     # -------------------------------------------------
 
     if not clinic:
-        return current_user
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Clinic not found"
+        )
 
     # -------------------------------------------------
     # TRIAL EXPIRY CHECK
@@ -142,30 +164,44 @@ def check_subscription(
         == SubscriptionStatus.TRIAL
 
         and clinic.trial_end_date
-
-        and datetime.now(IST)
-        > clinic.trial_end_date.replace(
-            tzinfo=IST
-        )
     ):
 
-        raise HTTPException(
+        # ---------------------------------------------
+        # HANDLE NAIVE DATETIME SAFELY
+        # ---------------------------------------------
 
-            status_code=402,
+        trial_end = (
 
-            detail={
+            IST.localize(clinic.trial_end_date)
 
-                "message":
-                    "Trial expired. "
-                    "Please upgrade to continue.",
+            if clinic.trial_end_date.tzinfo is None
 
-                "code":
-                    "TRIAL_EXPIRED",
-
-                "upgrade_url":
-                    "/settings/subscription"
-            }
+            else clinic.trial_end_date
         )
+
+        # ---------------------------------------------
+        # CHECK EXPIRY
+        # ---------------------------------------------
+
+        if datetime.now(IST) > trial_end:
+
+            raise HTTPException(
+
+                status_code=402,
+
+                detail={
+
+                    "message":
+                        "Trial expired. "
+                        "Please upgrade to continue.",
+
+                    "code":
+                        "TRIAL_EXPIRED",
+
+                    "upgrade_url":
+                        "/settings/subscription"
+                }
+            )
 
     return current_user
 
@@ -178,15 +214,9 @@ def doctor_only(
     current_user: User = Depends(get_current_user)
 ) -> User:
     """
-    Doctor-only endpoints:
+    Doctor-only endpoints.
 
-    - Analytics
-    - Revenue
-    - Reports
-    - Full patient history
-
-    Receptionists receive:
-    403 Forbidden
+    Receptionists blocked.
     """
 
     if current_user.role != UserRole.DOCTOR:
@@ -211,12 +241,16 @@ def receptionist_or_doctor(
 ) -> User:
     """
     Both doctor + receptionist allowed.
-
-    Used for:
-    - patient entry
-    - queue
-    - billing
-    - payments
     """
+
+    if current_user.role not in [
+        UserRole.DOCTOR,
+        UserRole.RECEPTIONIST
+    ]:
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
 
     return current_user

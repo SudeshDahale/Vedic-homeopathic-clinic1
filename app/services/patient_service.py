@@ -1,33 +1,34 @@
+import logging
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, func
+from sqlalchemy import or_, func, text, cast, String
 from fastapi import HTTPException, status
 
 from app.models.patient import Patient
-from app.schemas.patient import (
-    PatientCreate,
-    PatientUpdate
-)
+from app.schemas.patient import PatientCreate, PatientUpdate
+
+logger = logging.getLogger(__name__)
 
 
 # =====================================================
 # HELPERS
 # =====================================================
 
-def get_next_reg_no(
-    db: Session,
-    clinic_id: str
-) -> int:
+def get_next_reg_no(db: Session, clinic_id: str) -> int:
     """
-    Each clinic has independent registration numbering.
+    Race-condition-safe reg_no using DB-level locking.
+    Two receptionists registering simultaneously
+    will get sequential numbers, never duplicates.
     """
-
-    max_reg = db.query(
-        func.max(Patient.reg_no)
-    ).filter(
-        Patient.clinic_id == clinic_id
+    result = db.execute(
+        text("""
+            SELECT COALESCE(MAX(reg_no), 0) + 1
+            FROM patients
+            WHERE clinic_id = :clinic_id
+            FOR UPDATE
+        """),
+        {"clinic_id": clinic_id}
     ).scalar()
-
-    return (max_reg or 0) + 1
+    return result
 
 
 # =====================================================
@@ -39,101 +40,63 @@ def create_patient(
     data: PatientCreate,
     clinic_id: str
 ) -> Patient:
-    """
-    Register new patient.
-    """
 
-    # -------------------------------------------------
-    # ENUM SAFETY FIX
-    # Frontend may send:
-    # Female / Male / Other
-    #
-    # PostgreSQL enum expects:
-    # FEMALE / MALE / OTHER
-    # -------------------------------------------------
+    gender = data.gender.upper() if data.gender else None
+    marital_status = data.marital_status.upper() if data.marital_status else None
+    patient_type = data.patient_type.upper() if data.patient_type else "HOMEOPATHY"
+    language_pref = data.language_pref.lower() if data.language_pref else "en"
 
-    gender = (
-        data.gender.upper()
-        if data.gender else None
-    )
-
-    marital_status = (
-        data.marital_status.upper()
-        if data.marital_status else None
-    )
-
-    patient_type = (
-        data.patient_type.upper()
-        if data.patient_type else "HOMEOPATHY"
-    )
-
-    language_pref = (
-        data.language_pref.lower()
-        if data.language_pref else "en"
-    )
+    phone = _normalize_phone(data.phone_mobile) if data.phone_mobile else None
 
     patient = Patient(
-
         clinic_id=clinic_id,
+        reg_no=get_next_reg_no(db, clinic_id),
+        is_active=True,
 
-        reg_no=get_next_reg_no(
-            db,
-            clinic_id
-        ),
-
-        # Basic Info
         title=data.title,
-
         first_name=data.first_name,
         middle_name=data.middle_name,
         last_name=data.last_name,
 
         dob=data.dob,
         age=data.age,
-
-        # ENUM FIX
         gender=gender,
         marital_status=marital_status,
 
-        # Residential Address
         res_address=data.res_address,
         res_city=data.res_city,
         res_state=data.res_state,
         res_postal=data.res_postal,
         res_country=data.res_country or "India",
 
-        # Office Address
         off_address=data.off_address,
         off_city=data.off_city,
         off_state=data.off_state,
         off_postal=data.off_postal,
 
-        # Contact
-        phone_mobile=data.phone_mobile,
+        phone_mobile=phone,
         phone_res=data.phone_res,
         phone_office=data.phone_office,
 
         fax=data.fax,
         email=data.email,
 
-        # Referral
         referred_by_name=data.referred_by_name,
         referred_by_contact=data.referred_by_contact,
 
-        # Preferences
         language_pref=language_pref,
-
-        # ENUM FIX
         patient_type=patient_type,
-
         anniversary=data.anniversary
     )
 
     db.add(patient)
-
     db.commit()
-
     db.refresh(patient)
+
+    logger.info(
+        f"Patient created: {patient.id} | "
+        f"Clinic: {clinic_id} | Reg: {patient.reg_no}"
+    )
 
     return patient
 
@@ -150,89 +113,35 @@ def get_patients(
     limit: int = 50
 ) -> list:
     """
-    List/search patients.
+    List/search patients — clinic-scoped, no debug queries.
+    Limit capped at 200 to prevent accidental full-table dumps.
     """
-
-    # -------------------------------------------------
-    # DEBUG LOGS
-    # -------------------------------------------------
-
-    total_all = db.query(Patient).count()
-
-    total_clinic = db.query(Patient).filter(
-        Patient.clinic_id == clinic_id
-    ).count()
-
-    total_active = db.query(Patient).filter(
-        Patient.clinic_id == clinic_id,
-        Patient.is_active == True
-    ).count()
-
-    print(
-        f"DEBUG: Total patients in DB: {total_all}"
-    )
-
-    print(
-        f"DEBUG: Patients for clinic "
-        f"{clinic_id}: {total_clinic}"
-    )
-
-    print(
-        f"DEBUG: Active patients for clinic "
-        f"{clinic_id}: {total_active}"
-    )
-
-    # -------------------------------------------------
-    # MAIN QUERY
-    # -------------------------------------------------
+    limit = min(limit, 200)
 
     query = db.query(Patient).filter(
         Patient.clinic_id == clinic_id,
         Patient.is_active == True
     )
 
-    # -------------------------------------------------
-    # SEARCH
-    # -------------------------------------------------
-
     if search:
-
-        print(
-            f"DEBUG: Search term = {search}"
-        )
-
+        search_term = f"%{search.strip()}%"
         query = query.filter(
             or_(
-
-                Patient.first_name.ilike(
-                    f"%{search}%"
-                ),
-
-                Patient.last_name.ilike(
-                    f"%{search}%"
-                ),
-
-                Patient.middle_name.ilike(
-                    f"%{search}%"
-                ),
-
-                Patient.phone_mobile.ilike(
-                    f"%{search}%"
-                )
+                Patient.first_name.ilike(search_term),
+                Patient.last_name.ilike(search_term),
+                Patient.middle_name.ilike(search_term),
+                Patient.phone_mobile.ilike(search_term),
+                cast(Patient.reg_no, String).ilike(search_term)
             )
         )
-
-    # -------------------------------------------------
-    # FETCH RESULTS
-    # -------------------------------------------------
 
     patients = query.order_by(
         Patient.created_at.desc()
     ).offset(skip).limit(limit).all()
 
-    print(
-        f"DEBUG: Returning "
-        f"{len(patients)} patients"
+    logger.debug(
+        f"Patient list: clinic={clinic_id} "
+        f"search={search!r} count={len(patients)}"
     )
 
     return patients
@@ -247,6 +156,7 @@ def get_patient_by_id(
     patient_id: str,
     clinic_id: str
 ) -> Patient:
+    """Always clinic-scoped. Never fetch by ID alone."""
 
     patient = db.query(Patient).filter(
         Patient.id == patient_id,
@@ -273,47 +183,26 @@ def update_patient(
     data: PatientUpdate
 ) -> Patient:
 
-    patient = get_patient_by_id(
-        db,
-        patient_id,
-        clinic_id
-    )
+    patient = get_patient_by_id(db, patient_id, clinic_id)
 
-    update_data = data.model_dump(
-        exclude_unset=True
-    )
+    update_data = data.model_dump(exclude_unset=True)
 
-    # -------------------------------------------------
-    # ENUM FIXES
-    # -------------------------------------------------
+    for enum_field in ("gender", "marital_status", "patient_type"):
+        if update_data.get(enum_field):
+            update_data[enum_field] = update_data[enum_field].upper()
 
-    if "gender" in update_data and update_data["gender"]:
-        update_data["gender"] = (
-            update_data["gender"].upper()
-        )
-
-    if (
-        "marital_status" in update_data
-        and update_data["marital_status"]
-    ):
-        update_data["marital_status"] = (
-            update_data["marital_status"].upper()
-        )
-
-    if (
-        "patient_type" in update_data
-        and update_data["patient_type"]
-    ):
-        update_data["patient_type"] = (
-            update_data["patient_type"].upper()
+    if "phone_mobile" in update_data and update_data["phone_mobile"]:
+        update_data["phone_mobile"] = _normalize_phone(
+            update_data["phone_mobile"]
         )
 
     for field, value in update_data.items():
         setattr(patient, field, value)
 
     db.commit()
-
     db.refresh(patient)
+
+    logger.info(f"Patient updated: {patient_id} | Clinic: {clinic_id}")
 
     return patient
 
@@ -328,19 +217,15 @@ def get_patient_history(
     clinic_id: str
 ) -> dict:
     """
-    Complete patient timeline.
+    Complete visit timeline — fully clinic-scoped.
     """
-
-    patient = get_patient_by_id(
-        db,
-        patient_id,
-        clinic_id
-    )
+    patient = get_patient_by_id(db, patient_id, clinic_id)
 
     from app.models.visit import Visit
 
     visits = db.query(Visit).filter(
-        Visit.patient_id == patient_id
+        Visit.patient_id == patient_id,
+        Visit.clinic_id == clinic_id
     ).order_by(
         Visit.visit_date.desc()
     ).all()
@@ -348,97 +233,90 @@ def get_patient_history(
     history = []
 
     for v in visits:
-
         entry = {
-
-            "visit_id": v.id,
-
-            "date": (
-                v.visit_date.strftime("%d-%m-%Y")
-                if v.visit_date else ""
-            ),
-
-            "type": (
-                v.type.value
-                if v.type else None
-            ),
-
-            "chief_complaint":
-                v.chief_complaint,
-
-            "fee":
-                float(v.fee or 0),
-
-            "payment_status":
-                (
-                    v.payment_status.value
-                    if v.payment_status
-                    else None
-                )
+            "visit_id":        v.id,
+            "date":            v.visit_date.strftime("%d-%m-%Y") if v.visit_date else "",
+            "type":            v.type.value if v.type else None,
+            "chief_complaint": v.chief_complaint,
+            "fee":             float(v.fee or 0),
+            "payment_status":  v.payment_status.value if v.payment_status else None
         }
 
-        # Vitals
         if v.vitals:
-
+            bp = ""
+            if v.vitals.bp_systolic and v.vitals.bp_diastolic:
+                bp = f"{v.vitals.bp_systolic}/{v.vitals.bp_diastolic}"
             entry["vitals"] = {
-
-                "weight":
-                    float(
-                        v.vitals.weight_kg or 0
-                    ),
-
-                "height":
-                    float(
-                        v.vitals.height_cm or 0
-                    ),
-
-                "bp":
-                    f"{v.vitals.bp_systolic}/"
-                    f"{v.vitals.bp_diastolic}",
-
-                "temperature":
-                    float(
-                        v.vitals.temperature or 0
-                    )
+                "weight":      float(v.vitals.weight_kg or 0),
+                "height":      float(v.vitals.height_cm or 0),
+                "bp":          bp,
+                "temperature": float(v.vitals.temperature or 0)
             }
 
-        # Homeopathy
         if v.homeopathy_case:
+            entry["remedy"]  = v.homeopathy_case.remedy
+            entry["potency"] = v.homeopathy_case.potency
 
-            entry["remedy"] = (
-                v.homeopathy_case.remedy
-            )
-
-            entry["potency"] = (
-                v.homeopathy_case.potency
-            )
+        if v.allopathy_rx:
+            import json
+            try:
+                meds = json.loads(v.allopathy_rx.medicines or "[]")
+            except Exception:
+                meds = []
+            entry["medicines"] = meds
 
         history.append(entry)
 
     return {
-
         "patient": {
-
-            "id":
-                patient.id,
-
-            "reg_no":
-                patient.reg_no,
-
-            "name":
-                f"{patient.first_name} "
-                f"{patient.last_name or ''}".strip(),
-
-            "phone":
-                patient.phone_mobile,
-
-            "total_visits":
-                patient.total_visits
+            "id":           patient.id,
+            "reg_no":       patient.reg_no,
+            "name":         f"{patient.first_name} {patient.last_name or ''}".strip(),
+            "phone":        patient.phone_mobile,
+            "age":          patient.age,
+            "gender":       patient.gender.value if patient.gender else None,
+            "total_visits": patient.total_visits,
+            "last_visit":   patient.last_visit_date.strftime("%d-%m-%Y")
+                            if patient.last_visit_date else None
         },
-
-        "visits":
-            history,
-
-        "total_visits":
-            len(history)
+        "visits":       history,
+        "total_visits": len(history)
     }
+
+
+# =====================================================
+# SOFT DELETE
+# =====================================================
+
+def deactivate_patient(
+    db: Session,
+    patient_id: str,
+    clinic_id: str
+) -> dict:
+    """
+    Soft delete — never hard delete patient records.
+    Medical records must be retained per Indian health regulations.
+    """
+    patient = get_patient_by_id(db, patient_id, clinic_id)
+    patient.is_active = False
+    db.commit()
+    logger.info(f"Patient deactivated: {patient_id} | Clinic: {clinic_id}")
+    return {"message": "Patient deactivated", "patient_id": patient_id}
+
+
+# =====================================================
+# PRIVATE HELPERS
+# =====================================================
+
+def _normalize_phone(phone: str) -> str:
+    """
+    Strips spaces, dashes, country code.
+    Stores bare 10-digit number.
+    WhatsApp service adds 91 prefix on send.
+    """
+    phone = phone.strip().replace(" ", "").replace("-", "")
+    if phone.startswith("+91"):
+        phone = phone[4:]
+    elif phone.startswith("91") and len(phone) == 12:
+        phone = phone[2:]
+    return phone

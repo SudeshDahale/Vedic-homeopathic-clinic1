@@ -1,5 +1,6 @@
 import json
 import tempfile
+import asyncio
 
 from sqlalchemy.orm import Session
 
@@ -13,6 +14,10 @@ from app.models.clinic import Clinic
 
 from app.services.pdf_service import (
     generate_prescription_pdf
+)
+
+from app.services.whatsapp_service import (
+    send_text_message
 )
 
 from app.utils.storage import upload_pdf
@@ -55,7 +60,9 @@ def generate_prescription(
 
     patient = db.query(Patient).filter(
 
-        Patient.id == visit.patient_id
+        Patient.id == visit.patient_id,
+
+        Patient.clinic_id == clinic_id
 
     ).first()
 
@@ -77,6 +84,15 @@ def generate_prescription(
         Clinic.id == clinic_id
 
     ).first()
+
+    if not clinic:
+
+        raise HTTPException(
+
+            status_code=404,
+
+            detail="Clinic not found"
+        )
 
     # =================================================
     # DETECT VISIT TYPE
@@ -122,9 +138,13 @@ def generate_prescription(
         for med in medicines:
 
             rx_notes += (
+
                 f"• {med.get('name', '')} | "
+
                 f"{med.get('dosage', '')} | "
+
                 f"{med.get('frequency', '')} | "
+
                 f"{med.get('duration', '')}\n"
             )
 
@@ -187,51 +207,47 @@ def generate_prescription(
     # BUILD CLINIC DICT
     # =================================================
 
-    clinic_dict = {}
+    clinic_dict = {
 
-    if clinic:
+        "name":
+            clinic.name,
 
-        clinic_dict = {
+        "doctor_name":
+            clinic.doctor_name,
 
-            "name":
-                clinic.name,
+        "qualification":
+            clinic.qualification,
 
-            "doctor_name":
-                clinic.doctor_name,
+        "address":
+            clinic.address,
 
-            "qualification":
-                clinic.qualification,
+        "phone":
+            clinic.phone,
 
-            "address":
-                clinic.address,
+        "timings":
+            clinic.timings,
 
-            "phone":
-                clinic.phone,
+        "logo_url":
+            getattr(
+                clinic,
+                "logo_url",
+                None
+            ),
 
-            "timings":
-                clinic.timings,
+        "signature_url":
+            getattr(
+                clinic,
+                "signature_url",
+                None
+            ),
 
-            "logo_url":
-                getattr(
-                    clinic,
-                    "logo_url",
-                    None
-                ),
-
-            "signature_url":
-                getattr(
-                    clinic,
-                    "signature_url",
-                    None
-                ),
-
-            "reg_number":
-                getattr(
-                    clinic,
-                    "registration_number",
-                    ""
-                )
-        }
+        "reg_number":
+            getattr(
+                clinic,
+                "registration_number",
+                ""
+            )
+    }
 
     # =================================================
     # BUILD PATIENT DICT
@@ -270,18 +286,10 @@ def generate_prescription(
     doctor_dict = {
 
         "name":
-            (
-                clinic.doctor_name
-                if clinic
-                else "Doctor"
-            ),
+            clinic.doctor_name,
 
         "qualification":
-            (
-                clinic.qualification
-                if clinic
-                else "B.H.M.S."
-            )
+            clinic.qualification or "B.H.M.S."
     }
 
     # =================================================
@@ -316,7 +324,7 @@ def generate_prescription(
         pdf_path = temp_pdf.name
 
     # =================================================
-    # UPLOAD TO STORAGE
+    # UPLOAD PDF
     # =================================================
 
     pdf_url = upload_pdf(
@@ -325,6 +333,68 @@ def generate_prescription(
 
         folder="prescriptions"
     )
+
+    # =================================================
+    # SEND WHATSAPP MESSAGE
+    # =================================================
+
+    try:
+
+        if patient.phone_mobile:
+
+            whatsapp_message = (
+
+                f"Hi {patient_dict['name']}, "
+
+                f"your prescription from "
+
+                f"{clinic_dict['doctor_name']} "
+
+                f"is ready:\n\n"
+
+                f"{pdf_url}\n\n"
+
+                f"For queries, call "
+
+                f"{clinic_dict['phone']}"
+            )
+
+            # -----------------------------------------
+            # HANDLE ASYNC SAFELY
+            # -----------------------------------------
+
+            try:
+
+                loop = asyncio.get_running_loop()
+
+                loop.create_task(
+
+                    send_text_message(
+
+                        patient.phone_mobile,
+
+                        whatsapp_message
+                    )
+                )
+
+            except RuntimeError:
+
+                asyncio.run(
+
+                    send_text_message(
+
+                        patient.phone_mobile,
+
+                        whatsapp_message
+                    )
+                )
+
+    except Exception as whatsapp_error:
+
+        print(
+            f"❌ WhatsApp send failed: "
+            f"{whatsapp_error}"
+        )
 
     # =================================================
     # RESPONSE
@@ -346,4 +416,4 @@ def generate_prescription(
 
         "visit_type":
             visit_type
-    } 
+    }

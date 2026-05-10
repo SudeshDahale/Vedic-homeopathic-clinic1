@@ -1,6 +1,8 @@
-from sqlalchemy.orm import Session
+import logging
+from datetime import datetime, date, timedelta
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_
-from datetime import datetime, date
+
 from app.models.reminder import FollowUp, FollowUpStatus, FollowUpType
 from app.models.patient import Patient
 from app.models.clinic import Clinic
@@ -9,10 +11,15 @@ from app.services.notification_service import (
 )
 import pytz
 
+logger = logging.getLogger(__name__)
 IST = pytz.timezone("Asia/Kolkata")
 
+# Max days back to send overdue reminders
+# Prevents message flood if server was down for days
+OVERDUE_CUTOFF_DAYS = 1
+
+
 def get_template_key(followup_type: FollowUpType) -> str:
-    """Map follow-up type to template key"""
     mapping = {
         FollowUpType.THREE_DAY:   "followup_3d",
         FollowUpType.SEVEN_DAY:   "followup_7d",
@@ -22,37 +29,72 @@ def get_template_key(followup_type: FollowUpType) -> str:
     }
     return mapping.get(followup_type, "followup_7d")
 
-def get_due_reminders(db: Session, clinic_id: str,
-                      target_date: date = None) -> list:
+
+# =====================================================
+# GET DUE REMINDERS
+# =====================================================
+
+def get_due_reminders(
+    db: Session,
+    clinic_id: str,
+    target_date: date = None
+) -> list:
     """
-    Get all pending reminders due on target date.
-    WHY: Your external reminder app calls this endpoint.
-    Returns structured data ready to send.
+    FIX 1: joinedload eliminates N+1 query problem.
+    FIX 2: Overdue cutoff — only send today's and yesterday's max.
+            Prevents patient message flood after server downtime.
+    FIX 3: Opt-out check — skip patients who replied STOP.
     """
     if not target_date:
         target_date = datetime.now(IST).date()
 
-    followups = db.query(FollowUp).filter(
-        and_(
-            FollowUp.clinic_id == clinic_id,
-            FollowUp.status    == FollowUpStatus.PENDING,
-        )
-    ).all()
+    # Overdue cutoff: don't send reminders older than 1 day
+    cutoff_date = target_date - timedelta(days=OVERDUE_CUTOFF_DAYS)
 
-    # Filter by date
-    due = [f for f in followups
-           if f.due_date and f.due_date.date() <= target_date]
+    # FIX: single query with JOIN — no more per-row patient/clinic fetches
+    followups = (
+        db.query(FollowUp)
+        .options(
+            joinedload(FollowUp.patient),   # JOIN patients
+            joinedload(FollowUp.visit)      # JOIN visits (for clinic)
+        )
+        .filter(
+            and_(
+                FollowUp.clinic_id == clinic_id,
+                FollowUp.status    == FollowUpStatus.PENDING,
+                FollowUp.due_date  >= datetime(
+                    cutoff_date.year,
+                    cutoff_date.month,
+                    cutoff_date.day
+                ),
+                FollowUp.due_date  <= datetime(
+                    target_date.year,
+                    target_date.month,
+                    target_date.day,
+                    23, 59, 59
+                )
+            )
+        )
+        .all()
+    )
+
+    # Fetch clinic once — not per reminder
+    clinic = db.query(Clinic).filter(
+        Clinic.id == clinic_id
+    ).first()
 
     result = []
-    for f in due:
-        patient = db.query(Patient).filter(
-            Patient.id == f.patient_id
-        ).first()
-        clinic = db.query(Clinic).filter(
-            Clinic.id == clinic_id
-        ).first()
-
+    for f in followups:
+        patient = f.patient
         if not patient:
+            logger.warning(f"Reminder {f.id} has no patient — skipping")
+            continue
+
+        # FIX: respect WhatsApp opt-out
+        if getattr(patient, "whatsapp_opted_out", False):
+            logger.info(
+                f"Patient {patient.id} opted out — skipping reminder {f.id}"
+            )
             continue
 
         template_key = get_template_key(f.type)
@@ -67,78 +109,122 @@ def get_due_reminders(db: Session, clinic_id: str,
         )
 
         result.append({
-            "followup_id":   f.id,
-            "patient_id":    patient.id,
-            "patient_name":  f"{patient.first_name} {patient.last_name or ''}".strip(),
-            "phone":         patient.phone_mobile,
-            "language":      language,
-            "channel":       f.channel.value if f.channel else "WHATSAPP",
-            "type":          f.type.value if f.type else None,
-            "due_date":      f.due_date.strftime("%d-%m-%Y") if f.due_date else None,
-            "message":       message,
-            "template_key":  template_key
+            "followup_id":  f.id,
+            "patient_id":   patient.id,
+            "patient_name": f"{patient.first_name} {patient.last_name or ''}".strip(),
+            "phone":        patient.phone_mobile,
+            "language":     language,
+            "channel":      f.channel.value if f.channel else "WHATSAPP",
+            "type":         f.type.value if f.type else None,
+            "due_date":     f.due_date.strftime("%d-%m-%Y") if f.due_date else None,
+            "message":      message,
+            "template_key": template_key
         })
 
     return result
 
+
+# =====================================================
+# SEND DUE REMINDERS
+# =====================================================
+
 def send_due_reminders(db: Session, clinic_id: str) -> dict:
     """
-    Fetch due reminders and send them all.
-    Called by cron job every day at 9:30 AM.
-    WHY automated: Zero manual work for doctor or receptionist.
-    Patient gets reminded = comes back = revenue.
+    FIX: WhatsApp is async — run in a new event loop.
+    Called from APScheduler background thread which has no loop.
     """
-    due = get_due_reminders(db, clinic_id)
+    import asyncio
+    from app.services.whatsapp import send_text_message
 
+    due     = get_due_reminders(db, clinic_id)
     sent    = 0
     failed  = 0
+    skipped = 0
     results = []
 
-    for reminder in due:
-        # Send via correct channel
-        result = send_notification(
-            channel = reminder["channel"],
-            phone   = reminder["phone"] or "",
-            message = reminder["message"]
-        )
+    # One event loop for all sends in this clinic's batch
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
-        # Update status in database
-        followup = db.query(FollowUp).filter(
-            FollowUp.id == reminder["followup_id"]
-        ).first()
+    try:
+        for reminder in due:
+            phone = reminder.get("phone", "")
 
-        if followup:
-            if result["status"] in ["sent", "mocked"]:
-                followup.status  = FollowUpStatus.SENT
-                followup.sent_at = datetime.now(IST)
-                sent += 1
-            else:
-                followup.status = FollowUpStatus.FAILED
-                failed += 1
-            db.commit()
+            if not phone:
+                logger.warning(
+                    f"No phone for patient {reminder['patient_id']} — skipping"
+                )
+                skipped += 1
+                continue
 
-        results.append({
-            "patient": reminder["patient_name"],
-            "phone":   reminder["phone"],
-            "status":  result["status"],
-            "channel": reminder["channel"]
-        })
+            try:
+                # FIX: properly await async WhatsApp call
+                result = loop.run_until_complete(
+                    send_text_message(phone, reminder["message"])
+                )
+            except Exception as e:
+                logger.error(
+                    f"WhatsApp send error for {reminder['followup_id']}: {e}"
+                )
+                result = {"status": "failed", "error": str(e)}
+
+            # Update DB status + store message_id
+            followup = db.query(FollowUp).filter(
+                FollowUp.id == reminder["followup_id"]
+            ).first()
+
+            if followup:
+                if result.get("status") in ("sent", "mocked"):
+                    followup.status     = FollowUpStatus.SENT
+                    followup.sent_at    = datetime.now(IST)
+                    # FIX: store message_id for delivery audit
+                    followup.response   = result.get("message_id", "")
+                    sent += 1
+                else:
+                    followup.status   = FollowUpStatus.FAILED
+                    followup.response = result.get("error", "unknown")
+                    failed += 1
+
+                db.commit()
+
+            results.append({
+                "patient": reminder["patient_name"],
+                "phone":   phone,
+                "status":  result.get("status"),
+                "channel": reminder["channel"]
+            })
+
+    finally:
+        loop.close()
+
+    logger.info(
+        f"Reminders done: clinic={clinic_id} "
+        f"sent={sent} failed={failed} skipped={skipped}"
+    )
 
     return {
-        "date":         datetime.now(IST).strftime("%d-%m-%Y"),
-        "total_due":    len(due),
-        "sent":         sent,
-        "failed":       failed,
-        "results":      results
+        "date":      datetime.now(IST).strftime("%d-%m-%Y"),
+        "total_due": len(due),
+        "sent":      sent,
+        "failed":    failed,
+        "skipped":   skipped,
+        "results":   results
     }
 
-def mark_reminder_sent(db: Session, followup_id: str) -> dict:
-    """
-    Mark reminder as sent manually.
-    Used by external reminder app after it sends the message.
-    """
+
+# =====================================================
+# MARK REMINDER SENT (manual)
+# =====================================================
+
+def mark_reminder_sent(
+    db: Session,
+    followup_id: str,
+    clinic_id: str      # FIX: added — was missing tenant check
+) -> dict:
+
     followup = db.query(FollowUp).filter(
-        FollowUp.id == followup_id
+        FollowUp.id        == followup_id,
+        FollowUp.clinic_id == clinic_id     # tenant lock
     ).first()
 
     if not followup:
@@ -151,10 +237,20 @@ def mark_reminder_sent(db: Session, followup_id: str) -> dict:
 
     return {"message": "Marked as sent", "followup_id": followup_id}
 
-def mark_reminder_done(db: Session, followup_id: str) -> dict:
-    """Patient confirmed they are coming / came back"""
+
+# =====================================================
+# MARK REMINDER DONE
+# =====================================================
+
+def mark_reminder_done(
+    db: Session,
+    followup_id: str,
+    clinic_id: str      # FIX: added — was missing tenant check
+) -> dict:
+
     followup = db.query(FollowUp).filter(
-        FollowUp.id == followup_id
+        FollowUp.id        == followup_id,
+        FollowUp.clinic_id == clinic_id     # tenant lock
     ).first()
 
     if not followup:

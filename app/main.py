@@ -1,12 +1,22 @@
 import os
+import logging
 
 from fastapi import FastAPI
 
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.cors import (
+    CORSMiddleware
+)
 
 from app.config import settings
 
 from app.database import create_tables
+
+
+# =========================================================
+# LOGGER
+# =========================================================
+
+logger = logging.getLogger(__name__)
 
 
 # =========================================================
@@ -44,7 +54,12 @@ from app.routers.whatsapp import (
 from app.jobs.reminder_cron import (
     start_scheduler
 )
-from app.routers.billing_subscription import router as subscription_router
+
+# Subscription Router
+from app.routers.billing_subscription import (
+    router as subscription_router
+)
+
 
 # =========================================================
 # FASTAPI APP
@@ -68,15 +83,14 @@ app = FastAPI(
 
 
 # =========================================================
-# CORS CONFIGURATION
+# SECURE CORS CONFIGURATION
 # =========================================================
 
 allowed_origins = os.getenv(
 
     "ALLOWED_ORIGINS",
 
-    "*"
-
+    "https://app.vennova.in"
 ).split(",")
 
 app.add_middleware(
@@ -87,9 +101,25 @@ app.add_middleware(
 
     allow_credentials=True,
 
-    allow_methods=["*"],
+    allow_methods=[
 
-    allow_headers=["*"],
+        "GET",
+
+        "POST",
+
+        "PUT",
+
+        "DELETE",
+
+        "PATCH"
+    ],
+
+    allow_headers=[
+
+        "Authorization",
+
+        "Content-Type"
+    ],
 )
 
 
@@ -157,17 +187,9 @@ app.include_router(
 # WHATSAPP
 # ---------------------------------------------------------
 
-# GET  /webhooks/whatsapp
-# POST /webhooks/whatsapp
-
 app.include_router(
     webhook_router
 )
-
-# POST /whatsapp/send/message
-# POST /whatsapp/send/reminder
-# POST /whatsapp/send/thankyou/{id}
-# POST /whatsapp/send/birthday/{id}
 
 app.include_router(
     whatsapp_send_router
@@ -213,30 +235,81 @@ app.include_router(
     health_router
 )
 
-app.include_router(subscription_router) 
+# ---------------------------------------------------------
+# SUBSCRIPTIONS
+# ---------------------------------------------------------
+
+app.include_router(
+    subscription_router
+)
+
+
 # =========================================================
 # STARTUP EVENT
 # =========================================================
 
 @app.on_event("startup")
-def startup():
+async def startup():
     """
     Runs when FastAPI server starts.
+
+    Production-safe startup:
+    - doesn't crash on DB init errors
+    - handles Railway cold starts better
+    - safely starts APScheduler
     """
 
-    create_tables()
+    # -------------------------------------------------
+    # CREATE DATABASE TABLES
+    # -------------------------------------------------
 
-    start_scheduler()
+    try:
 
-    print("✅ Vennova v2.0 — All systems running")
+        create_tables()
 
-    print("✅ Database tables initialized")
+        print(
+            "✅ Database tables initialized"
+        )
 
-    print("✅ APScheduler started")
+    except Exception as e:
 
-    print("✅ Supabase connected")
+        logger.error(
+            f"❌ DB init error: {e}"
+        )
 
-    print("✅ WhatsApp services active")
+    # -------------------------------------------------
+    # START APSCHEDULER
+    # -------------------------------------------------
+
+    try:
+
+        start_scheduler()
+
+        print(
+            "✅ APScheduler started"
+        )
+
+    except Exception as e:
+
+        logger.error(
+            f"❌ Scheduler startup error: {e}"
+        )
+
+    # -------------------------------------------------
+    # FINAL STARTUP LOGS
+    # -------------------------------------------------
+
+    print(
+        "✅ Vennova v2.0 — All systems running"
+    )
+
+    print(
+        "✅ Supabase connected"
+    )
+
+    print(
+        "✅ WhatsApp services active"
+    )
 
 
 # =========================================================
